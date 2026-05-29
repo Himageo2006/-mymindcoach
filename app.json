@@ -9,7 +9,7 @@
     "scheme": "mindtalk",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mindtalk.app",
+      "bundleIdentifier": "com.mymindcoach.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "MyMindCoach uses your microphone so you can send voice messages to your coach.",
@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "com.mindtalk.app",
+      "package": "com.mymindcoach.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
