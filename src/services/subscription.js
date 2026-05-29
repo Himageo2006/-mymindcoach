@@ -1,5 +1,9 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+
+const SERVER_URL = 'https://mindtalk-server-production.up.railway.app';
+const APP_KEY    = 'mk-app-2024-xK9pL3mNqR7vW2jT';
 
 // ─── Keys ────────────────────────────────────────────────────────────────────
 const PREMIUM_KEY      = 'is_premium';
@@ -71,15 +75,11 @@ export async function initRevenueCat() {
 
 /** Returns 'free' | 'pro_monthly' | 'pro_annual' */
 export async function getActivePlan() {
-  // Web / testing override
-  if (Platform.OS === 'web') {
-    const val = await AsyncStorage.getItem(PREMIUM_KEY);
-    if (val === 'true') {
-      const plan = await AsyncStorage.getItem(PLAN_KEY);
-      return plan === 'pro_annual' ? 'pro_annual' : 'pro_monthly';
-    }
-    return 'free';
-  }
+  // ── OWNER OVERRIDE — hardcoded pro_annual ───────────────────────────────────
+  // Remove this line and uncomment RevenueCat when connecting real store keys.
+  return 'pro_annual';
+
+  if (Platform.OS === 'web') return 'free';
 
   if (!Purchases) return 'free';
   try {
@@ -179,6 +179,88 @@ export async function incrementJournalCount() {
   await AsyncStorage.setItem(JOURNAL_WEEK_KEY, String(week));
   const count = parseInt(await AsyncStorage.getItem(JOURNAL_COUNT_KEY) || '0');
   await AsyncStorage.setItem(JOURNAL_COUNT_KEY, String(count + 1));
+}
+
+// ─── Secure token storage (anti-jailbreak layer) ─────────────────────────────
+// Sub-tokens are stored in expo-secure-store (iOS Keychain / Android Keystore),
+// NOT AsyncStorage — so they survive app reinstall but can't be read/edited on
+// rooted devices the way AsyncStorage can.
+
+const SECURE_SUB_TOKEN = 'mkt_sub_token';
+const SECURE_DEVICE_ID = 'mkt_device_id';
+
+/**
+ * Returns the server-issued subscription token, or '' if none stored.
+ */
+export async function getSubToken() {
+  try {
+    return (await SecureStore.getItemAsync(SECURE_SUB_TOKEN)) || '';
+  } catch { return ''; }
+}
+
+/**
+ * Saves a subscription token to secure storage.
+ */
+export async function storeSubToken(token) {
+  try { await SecureStore.setItemAsync(SECURE_SUB_TOKEN, token); }
+  catch (e) { console.warn('[SecureStore] storeSubToken failed:', e.message); }
+}
+
+/**
+ * Removes the subscription token (call on logout or subscription cancel).
+ */
+export async function clearSubToken() {
+  try { await SecureStore.deleteItemAsync(SECURE_SUB_TOKEN); }
+  catch { }
+}
+
+/**
+ * Returns a stable, per-device ID.  Generated once and stored in SecureStore.
+ * Used to bind subscription tokens to a device so tokens can't be shared.
+ */
+export async function getDeviceId() {
+  try {
+    let id = await SecureStore.getItemAsync(SECURE_DEVICE_ID);
+    if (!id) {
+      // Generate a random ID and persist it permanently
+      const rand = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+      id = `mk-${rand}-${Date.now().toString(36)}`;
+      await SecureStore.setItemAsync(SECURE_DEVICE_ID, id);
+    }
+    return id;
+  } catch {
+    // Fallback if SecureStore unavailable (simulators sometimes)
+    return `fallback-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+/**
+ * After a successful RevenueCat purchase, call this to get a server-verified
+ * subscription token and store it in SecureStore.
+ *
+ * rcUserId — RevenueCat originalAppUserId from customerInfo
+ */
+export async function fetchAndStoreSubToken(rcUserId) {
+  const deviceId = await getDeviceId();
+  const res = await fetch(`${SERVER_URL}/api/issue-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-app-key': APP_KEY,
+    },
+    body: JSON.stringify({
+      rcUserId,
+      platform: Platform.OS,
+      deviceId,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Token issue failed: ${res.status}`);
+  }
+  const { token } = await res.json();
+  await storeSubToken(token);
+  return token;
 }
 
 function getWeekNumber() {
