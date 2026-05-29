@@ -52,6 +52,61 @@ function getSuggestions(lang, userGender) {
   return s.default;
 }
 
+// ─── Canned instant replies for Arabic suggestion chips ──────────────────────
+// Keyed by exact suggestion text. Returns reply based on userGender + dialect.
+// Bypasses API call entirely — instant, zero cost, guaranteed quality.
+const CANNED_REPLIES_AR = {
+  // ── "أنا حاسس/ة بضغط نفسي كتير" ────────────────────────────────────────
+  'أنا حاسسة بضغط نفسي كتير': (dialect) => dialect === 'syrian'
+    ? 'والله هيدا ثقيل. شو اللي عم يضغط عليكِ أكتر هلق؟'
+    : 'والله ده تقيل. بيجيلِك الضغط ده من إيه؟',
+  'أنا حاسس بضغط نفسي كتير': (dialect) => dialect === 'syrian'
+    ? 'والله هيدا ثقيل. شو اللي عم يضغط عليك أكتر هلق؟'
+    : 'والله ده تقيل. بيجيلك الضغط ده من إيه؟',
+  'بحس بضغط نفسي كتير': (dialect) => dialect === 'syrian'
+    ? 'والله هيدا ثقيل. شو اللي عم يضغط عليك؟'
+    : 'والله ده تقيل. بيجيلك الضغط ده من إيه؟',
+
+  // ── "مش قادر/ة أوقف التفكير" ────────────────────────────────────────────
+  'مش قادرة أوقف التفكير': (dialect) => dialect === 'syrian'
+    ? 'يا عيني هيدا تعب. شو اللي عم يدور في بالِك؟'
+    : 'يا عيني ده وجع. في إيه بالظبط اللي بيدور في دماغِك؟',
+  'مش قادر أوقف التفكير': (dialect) => dialect === 'syrian'
+    ? 'يا عيني هيدا تعب. شو اللي عم يدور في بالك؟'
+    : 'يا عيني ده وجع. في إيه بالظبط اللي بيدور في دماغك؟',
+  'مش قادر/ة أوقف التفكير': (dialect) => dialect === 'syrian'
+    ? 'يا عيني هيدا تعب. شو اللي عم يدور في بالك؟'
+    : 'يا عيني ده وجع. في إيه اللي بيدور في دماغك؟',
+
+  // ── "محتاج/ة حد أتكلم معه" ──────────────────────────────────────────────
+  'محتاجة حد أتكلم معه': (dialect) => dialect === 'syrian'
+    ? 'أنا هون معِك. قوليلي شو اللي على بالِك هلق؟'
+    : 'أنا هنا معاكِ. قوليلي إيه اللي على بالِك دلوقتي؟',
+  'محتاج حد أتكلم معه': (dialect) => dialect === 'syrian'
+    ? 'أنا هون معك. قوليلي شو اللي على بالك هلق؟'
+    : 'أنا هنا معاك. قوليلي إيه اللي على بالك دلوقتي؟',
+  'محتاج/ة حد أتكلم معه': (dialect) => dialect === 'syrian'
+    ? 'أنا هون معك. شو اللي على بالك؟'
+    : 'أنا هنا معاك. قوليلي إيه اللي على بالك دلوقتي؟',
+
+  // ── "قلقان/ة ومش عارف/ة ليه" ────────────────────────────────────────────
+  'قلقانة ومش عارفة ليه': (dialect) => dialect === 'syrian'
+    ? 'هيدا إحساس صعب لما ما بتعرفي سببه. من إيمتى عم تحسي بهيك قلق؟'
+    : 'ده إحساس صعب لما مش قادرة تفسريه. من إمتى بيجيلِك القلق ده؟',
+  'قلقان ومش عارف ليه': (dialect) => dialect === 'syrian'
+    ? 'هيدا إحساس صعب لما ما بتعرف سببه. من إيمتى عم تحس بهيك قلق؟'
+    : 'ده إحساس صعب لما مش قادر تفسره. من إمتى بيجيلك القلق ده؟',
+  'قلقان/ة ومش عارف ليه': (dialect) => dialect === 'syrian'
+    ? 'هيدا إحساس صعب. من إيمتى عم تحس بهيك قلق؟'
+    : 'ده إحساس صعب لما مش قادر تفسره. من إمتى بيجيلك القلق ده؟',
+};
+
+function getCannedReply(text, coachDialect) {
+  const fn = CANNED_REPLIES_AR[text];
+  if (!fn) return null;
+  return fn(coachDialect || 'egyptian');
+}
+
 const WELCOME_STRINGS = {
   ar: {
     noCheckup: (n, cn, cg, ug) => {
@@ -259,6 +314,24 @@ export default function Chat() {
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setLoading(true);
+
+    // ── Canned reply for Arabic suggestion chips — instant, no API call ──────
+    const canned = (coach.language || i18n.language) === 'ar'
+      ? getCannedReply(userText, coach.dialect)
+      : null;
+
+    if (canned) {
+      // Small natural delay so it doesn't feel robotic
+      await new Promise(r => setTimeout(r, 900));
+      await incrementMessageCount();
+      const { remaining: newRem } = await canSendMessage();
+      setRemaining(newRem);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: canned, time: new Date() }]);
+      success();
+      setLoading(false);
+      return;
+    }
+
     try {
       const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
       const checkup = await getLastCheckupResult();
