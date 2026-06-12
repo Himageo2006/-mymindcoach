@@ -69,25 +69,25 @@ const CANNED_REPLIES_AR = {
 
   // ── "مش قادر/ة أوقف التفكير" ────────────────────────────────────────────
   'مش قادرة أوقف التفكير': (dialect) => dialect === 'syrian'
-    ? 'يا عيني هيدا تعب. شو اللي عم يدور في بالِك؟'
-    : 'يا عيني ده وجع. في إيه بالظبط اللي بيدور في دماغِك؟',
+    ? 'التفكير الزيادة مرهق كتير. شو اللي عم يدور في بالِك أكتر شي؟'
+    : 'التفكير الزيادة ده مرهق جداً. في إيه بالظبط اللي بيدور في دماغِك؟',
   'مش قادر أوقف التفكير': (dialect) => dialect === 'syrian'
-    ? 'يا عيني هيدا تعب. شو اللي عم يدور في بالك؟'
-    : 'يا عيني ده وجع. في إيه بالظبط اللي بيدور في دماغك؟',
+    ? 'التفكير الزيادة مرهق كتير. شو اللي عم يدور في بالك أكتر شي؟'
+    : 'التفكير الزيادة ده مرهق جداً. في إيه بالظبط اللي بيدور في دماغك؟',
   'مش قادر/ة أوقف التفكير': (dialect) => dialect === 'syrian'
-    ? 'يا عيني هيدا تعب. شو اللي عم يدور في بالك؟'
-    : 'يا عيني ده وجع. في إيه اللي بيدور في دماغك؟',
+    ? 'التفكير الزيادة مرهق كتير. شو اللي عم يدور في بالك؟'
+    : 'التفكير الزيادة ده مرهق جداً. في إيه اللي بيدور في دماغك؟',
 
   // ── "محتاج/ة حد أتكلم معه" ──────────────────────────────────────────────
   'محتاجة حد أتكلم معه': (dialect) => dialect === 'syrian'
     ? 'أنا هون معِك. قوليلي شو اللي على بالِك هلق؟'
     : 'أنا هنا معاكِ. قوليلي إيه اللي على بالِك دلوقتي؟',
   'محتاج حد أتكلم معه': (dialect) => dialect === 'syrian'
-    ? 'أنا هون معك. قوليلي شو اللي على بالك هلق؟'
-    : 'أنا هنا معاك. قوليلي إيه اللي على بالك دلوقتي؟',
+    ? 'أنا هون معك. قوللي شو اللي على بالك هلق؟'
+    : 'أنا هنا معاك. قوللي إيه اللي على بالك دلوقتي؟',
   'محتاج/ة حد أتكلم معه': (dialect) => dialect === 'syrian'
     ? 'أنا هون معك. شو اللي على بالك؟'
-    : 'أنا هنا معاك. قوليلي إيه اللي على بالك دلوقتي؟',
+    : 'أنا هنا معاك. قوللي إيه اللي على بالك دلوقتي؟',
 
   // ── "قلقان/ة ومش عارف/ة ليه" ────────────────────────────────────────────
   'قلقانة ومش عارفة ليه': (dialect) => dialect === 'syrian'
@@ -456,6 +456,13 @@ export default function Chat() {
         </TouchableOpacity>
       </View>
 
+      {/* Medical Disclaimer Banner */}
+      <View style={styles.disclaimerBanner}>
+        <Text style={styles.disclaimerText}>
+          ⚕️ Not medical advice. For emergencies contact a licensed professional or call emergency services.
+        </Text>
+      </View>
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={90}>
         <FlatList
           ref={listRef}
@@ -611,6 +618,13 @@ function createStyles(Colors, isRTL) {
     suggestionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     suggestionChip: { backgroundColor: Colors.primaryLight, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
     suggestionText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+    disclaimerBanner: {
+      backgroundColor: '#FFF8E1', paddingHorizontal: 14, paddingVertical: 6,
+      borderBottomWidth: 1, borderBottomColor: '#FFE082',
+    },
+    disclaimerText: {
+      fontSize: 11, color: '#795548', textAlign: 'center', lineHeight: 16,
+    },
     limitBanner: {
       backgroundColor: Colors.card, marginHorizontal: 12, marginBottom: 6, padding: 12, borderRadius: 12,
       borderLeftWidth: isRTL ? 0 : 4, borderLeftColor: Colors.warning,

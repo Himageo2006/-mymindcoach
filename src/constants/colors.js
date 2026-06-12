@@ -1,0 +1,53 @@
+export const LightColors = {
+  primary: '#7C3AED',
+  primaryLight: '#EDE9FE',
+  primaryDark: '#5B21B6',
+  secondary: '#EC4899',
+  accent: '#06B6D4',
+  background: '#F5F3FF',
+  card: '#FFFFFF',
+  text: '#1E1B4B',
+  textLight: '#6B7280',
+  textMuted: '#A78BFA',
+  border: '#E5E7EB',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  gradientStart: '#7C3AED',
+  gradientEnd: '#EC4899',
+  moods: {
+    great: '#10B981',
+    good: '#7C3AED',
+    okay: '#F59E0B',
+    bad: '#F97316',
+    awful: '#EF4444',
+  },
+};
+
+export const DarkColors = {
+  primary: '#A78BFA',
+  primaryLight: '#2D1F5E',
+  primaryDark: '#7C3AED',
+  secondary: '#F472B6',
+  accent: '#22D3EE',
+  background: '#0F0B1E',
+  card: '#1A1535',
+  text: '#F5F3FF',
+  textLight: '#A78BFA',
+  textMuted: '#6D5E9C',
+  border: '#2D2550',
+  success: '#34D399',
+  warning: '#FBBF24',
+  error: '#F87171',
+  gradientStart: '#7C3AED',
+  gradientEnd: '#EC4899',
+  moods: {
+    great: '#34D399',
+    good: '#A78BFA',
+    okay: '#FBBF24',
+    bad: '#FB923C',
+    awful: '#F87171',
+  },
+};
+
+export const Colors = LightColors;
