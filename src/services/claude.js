@@ -38,7 +38,7 @@ async function signBody(bodyStr, ts) {
   }
 }
 
-export async function sendMessage(messages, userName = 'friend', coachName = 'Dr. Sarah', coachGender = 'female', checkup = null, coachLanguage = 'en', coachId = 'sarah_en', userGender = null) {
+export async function sendMessage(messages, userName = 'friend', coachName = 'Sarah', coachGender = 'female', checkup = null, coachLanguage = 'en', coachId = 'sarah_en', userGender = null) {
   const plan = await getPlanConfig();
   const memory = await getMemory();
 

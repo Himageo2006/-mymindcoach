@@ -195,7 +195,7 @@ function TypingIndicator({ Colors, coachAvatar }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 16 }}>
       <View style={[styles_static.avatarCircle, { backgroundColor: Colors.primaryLight }]}>
-        <Text style={{ fontSize: 20 }}>{coachAvatar || '👩‍⚕️'}</Text>
+        <Text style={{ fontSize: 20 }}>{coachAvatar || '🧘‍♀️'}</Text>
       </View>
       <View style={[styles_static.bubble, { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderBottomLeftRadius: 4 }]}>
         <View style={{ flexDirection: 'row', gap: 4, padding: 4 }}>
@@ -231,7 +231,7 @@ export default function Chat() {
   const [transcribing, setTranscribing] = useState(false);
   const [isOnline] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [coach, setCoach] = useState({ name: 'Dr. Sarah', avatar: '👩‍⚕️', gender: 'female', specialty: 'Certified Wellness Coach' });
+  const [coach, setCoach] = useState({ name: 'Sarah', avatar: '🧘‍♀️', gender: 'female', specialty: 'Certified Wellness Coach' });
   const [initializing, setInitializing] = useState(true);
   const [showCheckup, setShowCheckup] = useState(false);
   const listRef = useRef(null);

@@ -110,6 +110,8 @@ export default function CoachSelect() {
           <View>
             <Text style={styles.subtitle}>
               Native coaches speak your language. International coaches speak English. You can switch anytime.
+
+🌿 All coaches are AI wellness companions — not licensed therapists or medical professionals.
             </Text>
 
             {/* Language filter */}

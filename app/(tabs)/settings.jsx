@@ -157,10 +157,10 @@ export default function Settings() {
           activeOpacity={0.8}
         >
           <View style={[styles.coachAvatarCircle, { backgroundColor: (currentCoach?.color || Colors.primary) + '22' }]}>
-            <Text style={styles.coachAvatarEmoji}>{currentCoach?.avatar || '👩‍⚕️'}</Text>
+            <Text style={styles.coachAvatarEmoji}>{currentCoach?.avatar || '🧘‍♀️'}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.coachName}>{currentCoach?.name || 'Dr. Sarah'}</Text>
+            <Text style={styles.coachName}>{currentCoach?.name || 'Sarah'}</Text>
             <Text style={styles.coachSpecialty}>{currentCoach?.specialty || 'Wellness Coach'}</Text>
           </View>
           <Text style={styles.langArrow}>{isRTL ? '‹' : '›'}</Text>

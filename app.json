@@ -2,7 +2,7 @@
   "expo": {
     "name": "MyMindCoach",
     "slug": "MindTalk",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.mymindcoach.app",
-      "buildNumber": "1",
+      "buildNumber": "12",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "MyMindCoach uses your microphone so you can send voice messages to your coach.",
@@ -28,7 +28,8 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.VIBRATE"
-      ]
+      ],
+      "versionCode": 12
     },
     "web": {
       "favicon": "./assets/favicon.png",
