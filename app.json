@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.mymindcoach.app",
-      "buildNumber": "12",
+      "buildNumber": "16",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "MyMindCoach uses your microphone so you can send voice messages to your coach.",
@@ -51,8 +51,7 @@
       "expo-asset",
       "expo-localization",
       "expo-sharing",
-      "expo-notifications",
-      "expo-audio"
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

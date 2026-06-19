@@ -6,19 +6,19 @@ import { useColors } from '../src/context/ThemeContext';
 const SECTIONS = [
   {
     title: '1. Information We Collect',
-    body: 'MyMindCoach collects only the information you provide directly: your first name and wellness goal during onboarding. Your journal entries and mood check-ins are stored only on your device and never transmitted to our servers.',
+    body: 'MyMindCoach collects only the information you provide directly: your first name and wellness goal during onboarding. Your conversation messages are sent to our secure server to generate AI responses and are not stored after the response is delivered. Your journal entries, mood check-ins, and profile are stored only on your device.',
   },
   {
     title: '2. How We Use Your Information',
-    body: 'Your name and goal are used solely to personalize your experience within the app. Conversation messages are sent to our secure server to generate responses and are not stored after the response is delivered.',
+    body: 'Your name and goal are used to personalize your experience. When you send a message to your coach, it is transmitted to our secure backend server, which forwards it to Anthropic\'s Claude AI API to generate a response. The message is not stored after the response is delivered. We do not use your conversations for advertising or sell your data to third parties.',
   },
   {
     title: '3. Data Storage',
-    body: 'All personal data — including journal entries, mood history, and your profile — is stored locally on your device using encrypted storage. We do not maintain a database of user content.',
+    body: 'All personal data — including journal entries, mood history, and your profile — is stored locally on your device using encrypted storage. Conversation messages are processed in transit and not stored on our servers after a response is delivered.',
   },
   {
-    title: '4. Third-Party Services',
-    body: 'MyMindCoach uses secure cloud technology to power conversations. Messages are processed by our server and are not stored after the response is delivered. We use RevenueCat to manage subscriptions securely.',
+    title: '4. Third-Party AI Service — Anthropic',
+    body: 'MyMindCoach uses Claude, an AI model developed by Anthropic, PBC (anthropic.com), to generate your coach\'s responses. When you send a message, it is transmitted securely to Anthropic\'s API for processing. Anthropic does not store your messages after generating a response. Anthropic\'s privacy policy is available at anthropic.com/privacy. We also use RevenueCat to manage in-app subscriptions securely.',
   },
   {
     title: '5. Subscriptions & Payments',
@@ -56,7 +56,7 @@ export default function Privacy() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.appName}>MyMindCoach</Text>
-        <Text style={styles.updated}>Last updated: May 2026</Text>
+        <Text style={styles.updated}>Last updated: June 2026</Text>
         <Text style={styles.intro}>
           Your privacy matters to us. This policy explains what information MyMindCoach collects, how we use it, and how we protect it.
         </Text>

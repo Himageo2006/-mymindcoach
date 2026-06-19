@@ -88,7 +88,7 @@ const resources = {
       reminderTime: 'Reminder Time',
       reminderTimeSub: 'When to send daily reminder',
       privacySecurity: '🔒 Privacy & Security',
-      privacyText: 'Your conversations are private and processed securely. No personal data is stored on our servers — only on your device.',
+      privacyText: 'Your conversations are processed securely by Anthropic\'s Claude AI. Messages are not stored after a response is delivered. Journal entries and mood data stay only on your device.',
       aboutMyMindCoach: '💬 About MyMindCoach',
       aboutText: 'MyMindCoach is your personal mental wellness companion. It is not a substitute for professional mental health care. If you are in crisis, please contact a helpline immediately.',
       privacyPolicy: '📄 Privacy Policy',

@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, FlatList,
-  Animated, Dimensions,
+  Animated, Dimensions, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -266,8 +266,11 @@ export default function Onboarding() {
                 <Text style={s.btnText}>{o.getStarted}</Text>
               </TouchableOpacity>
 
-              {/* Privacy note */}
-              <Text style={s.privacyNote}>{o.privacyNote}</Text>
+              {/* AI disclosure + privacy consent */}
+              <Text style={s.privacyNote}>
+                {'By continuing, you agree that your messages will be processed by Anthropic\'s Claude AI to generate responses. '}
+                <Text style={s.privacyLink} onPress={() => router.push('/privacy')}>Privacy Policy</Text>
+              </Text>
             </View>
           )}
 
@@ -564,6 +567,9 @@ function createStyles(C) {
     privacyNote: {
       fontSize: 12, color: C.textMuted, textAlign: 'center',
       marginTop: 16, lineHeight: 18,
+    },
+    privacyLink: {
+      color: C.primary, textDecorationLine: 'underline', fontWeight: '600',
     },
 
     // Input
