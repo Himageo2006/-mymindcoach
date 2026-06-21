@@ -38,18 +38,18 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Build Release APK
+      - name: Build Release AAB
         run: |
           cd android
-          ./gradlew assembleRelease \
+          ./gradlew bundleRelease \
             -PMYAPP_RELEASE_STORE_FILE=mymindcoach-release.keystore \
             -PMYAPP_RELEASE_KEY_ALIAS=mymindcoach \
             -PMYAPP_RELEASE_STORE_PASSWORD="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
             -PMYAPP_RELEASE_KEY_PASSWORD="${{ secrets.ANDROID_KEY_PASSWORD }}"
 
-      - name: Upload APK
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
           name: MyMindCoach-release-${{ github.run_number }}
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 30
