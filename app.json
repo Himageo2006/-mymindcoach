@@ -51,8 +51,7 @@
       "expo-asset",
       "expo-localization",
       "expo-sharing",
-      "expo-notifications",
-      "react-native-purchases"
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true
