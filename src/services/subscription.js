@@ -59,44 +59,36 @@ export const FREE_LIMITS = {
 // ─── RevenueCat ──────────────────────────────────────────────────────────────
 let Purchases = null;
 
+// Android SDK key (Test Store — replace with real Google Play key after connecting Play in RC)
+const RC_ANDROID_KEY = 'test_lfCrAoJpNkemTMsbvfeXQjEpklp';
+
 export async function initRevenueCat() {
-  // RevenueCat disabled until production — uncomment when connecting real store keys
-  // if (Platform.OS === 'web') return;
-  // try {
-  //   const rc = await import('react-native-purchases');
-  //   Purchases = rc.default;
-  //   await Purchases.configure({ apiKey: 'test_lfCrAoJpNkemTMsbvfeXQjEpklp' });
-  // } catch (e) {
-  //   console.log('RevenueCat not available:', e.message);
-  // }
+  if (Platform.OS === 'web') return;
+  try {
+    const rc = await import('react-native-purchases');
+    Purchases = rc.default;
+    await Purchases.configure({ apiKey: RC_ANDROID_KEY });
+  } catch (e) {
+    console.log('[RC] init failed:', e.message);
+  }
 }
 
 // ─── Plan detection ───────────────────────────────────────────────────────────
 
 /** Returns 'free' | 'pro_monthly' | 'pro_annual' */
 export async function getActivePlan() {
-  // ── OWNER OVERRIDE — hardcoded pro_annual ───────────────────────────────────
-  // Remove this line and uncomment RevenueCat when connecting real store keys.
-  return 'pro_annual';
-
   if (Platform.OS === 'web') return 'free';
-
   if (!Purchases) return 'free';
   try {
     const info = await Purchases.getCustomerInfo();
     const active = info.entitlements.active;
     if (!active || Object.keys(active).length === 0) return 'free';
-
-    // Check which product is active to distinguish monthly vs annual
     const proEntitlement = active['pro'];
     if (proEntitlement) {
       const productId = proEntitlement.productIdentifier || '';
-      if (productId.includes('annual') || productId.includes('yearly')) {
-        return 'pro_annual';
-      }
+      if (productId.includes('annual') || productId.includes('yearly')) return 'pro_annual';
       return 'pro_monthly';
     }
-    // Fallback: any active entitlement = pro_monthly
     return 'pro_monthly';
   } catch {
     return 'free';
@@ -117,15 +109,36 @@ export async function getPlanConfig() {
 
 // ─── Offerings ───────────────────────────────────────────────────────────────
 export async function getOfferings() {
-  return null; // RevenueCat disabled until production
+  if (!Purchases) return null;
+  try {
+    const offerings = await Purchases.getOfferings();
+    return offerings.current || null;
+  } catch {
+    return null;
+  }
 }
 
+/** pkg = PurchasesPackage from getOfferings() */
 export async function purchasePremium(pkg) {
-  throw new Error('Purchases not available in this build');
+  if (!Purchases) throw new Error('RevenueCat not initialized');
+  const { customerInfo } = await Purchases.purchasePackage(pkg);
+  try {
+    await fetchAndStoreSubToken(customerInfo.originalAppUserId);
+  } catch (e) {
+    console.warn('[RC] token fetch failed after purchase:', e.message);
+  }
+  return customerInfo;
 }
 
 export async function restorePurchases() {
-  throw new Error('Restore not available in this build');
+  if (!Purchases) throw new Error('RevenueCat not initialized');
+  const customerInfo = await Purchases.restorePurchases();
+  try {
+    await fetchAndStoreSubToken(customerInfo.originalAppUserId);
+  } catch (e) {
+    console.warn('[RC] token fetch failed after restore:', e.message);
+  }
+  return customerInfo;
 }
 
 // ─── Usage tracking ──────────────────────────────────────────────────────────
