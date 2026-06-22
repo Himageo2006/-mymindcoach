@@ -59,8 +59,7 @@ export const FREE_LIMITS = {
 // ─── RevenueCat ──────────────────────────────────────────────────────────────
 let Purchases = null;
 
-// Android SDK key (Test Store — replace with real Google Play key after connecting Play in RC)
-const RC_ANDROID_KEY = 'test_lfCrAoJpNkemTMsbvfeXQjEpklp';
+const RC_ANDROID_KEY = 'goog_dlgPJbtRNqbqLNrNVovPAEPWcGu';
 
 export async function initRevenueCat() {
   if (Platform.OS === 'web') return;
