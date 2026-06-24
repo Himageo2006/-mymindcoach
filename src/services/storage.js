@@ -1,5 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// ── AI data-use consent (Apple 5.1.1/5.1.2): user must agree before any AI call ──
+export async function getAIConsent() {
+  return (await AsyncStorage.getItem('ai_consent_v1')) === 'yes';
+}
+export async function setAIConsent() {
+  await AsyncStorage.setItem('ai_consent_v1', 'yes');
+}
+
 export async function saveUserProfile(name, goal, age = null, nationality = null, userGender = null) {
   await AsyncStorage.setItem('user_name', name);
   await AsyncStorage.setItem('user_goal', goal);

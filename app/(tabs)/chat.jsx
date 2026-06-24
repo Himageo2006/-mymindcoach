@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Animated
+  FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Modal, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
@@ -9,7 +9,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '../../src/context/ThemeContext';
 import { sendMessage } from '../../src/services/claude';
-import { getUserProfile } from '../../src/services/storage';
+import { getUserProfile, getAIConsent, setAIConsent } from '../../src/services/storage';
 import { canSendMessage, incrementMessageCount, FREE_LIMITS, getPlanConfig } from '../../src/services/subscription';
 import { getChatLanguage, getAppLanguage } from '../../src/services/language';
 import { extractAndSaveMemory } from '../../src/services/memory';
@@ -234,6 +234,8 @@ export default function Chat() {
   const [coach, setCoach] = useState({ name: 'Sarah', avatar: '🧘‍♀️', gender: 'female', specialty: 'Certified Wellness Coach' });
   const [initializing, setInitializing] = useState(true);
   const [showCheckup, setShowCheckup] = useState(false);
+  const [consentVisible, setConsentVisible] = useState(false);
+  const pendingTextRef = useRef('');
   const listRef = useRef(null);
   const isMounted = useRef(true);
 
@@ -297,9 +299,23 @@ export default function Chat() {
     await loadChat();
   }
 
+  async function acceptAIConsent() {
+    await setAIConsent();
+    setConsentVisible(false);
+    const t = pendingTextRef.current; pendingTextRef.current = '';
+    if (t) handleSend(t);
+  }
+
   async function handleSend(text) {
     const userText = (text || input).trim();
     if (!userText || loading) return;
+
+    // AI data-use consent gate (Apple 5.1.1/5.1.2) — ask once before sending anything to the AI
+    if (!(await getAIConsent())) {
+      pendingTextRef.current = userText;
+      setConsentVisible(true);
+      return;
+    }
 
     const { allowed } = await canSendMessage();
     if (!allowed) {
@@ -551,6 +567,38 @@ export default function Chat() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* AI data-use consent (Apple 5.1.1/5.1.2) — shown once before the first AI message */}
+      <Modal visible={consentVisible} transparent animationType="fade" onRequestClose={() => setConsentVisible(false)}>
+        <View style={styles.consentOverlay}>
+          <View style={[styles.consentCard, { backgroundColor: Colors.card || '#fff' }]}>
+            <Text style={[styles.consentTitle, { color: Colors.text }]}>🔒 {t('consent.title', 'AI & Your Privacy')}</Text>
+            <ScrollView style={{ maxHeight: 280 }}>
+              <Text style={[styles.consentBody, { color: Colors.text }]}>
+                {t('consent.body',
+`To reply to you, MindTalk sends the messages you type to our AI provider (Anthropic Claude) for processing, so it can generate a response.
+
+• What is sent: the text of your chat messages (and your first name if you set one).
+• Who it is sent to: Anthropic (Claude AI), our processing provider.
+• What it is used for: only to generate replies in this conversation.
+
+MindTalk is a wellness companion, not a medical or emergency service. By continuing you agree to this AI processing as described in our Privacy Policy.`)}
+              </Text>
+            </ScrollView>
+            <TouchableOpacity style={styles.consentLink} onPress={() => { setConsentVisible(false); router.push('/privacy'); }}>
+              <Text style={[styles.consentLinkText, { color: Colors.primary || '#7C3AED' }]}>{t('consent.privacy', 'Read Privacy Policy')}</Text>
+            </TouchableOpacity>
+            <View style={styles.consentBtns}>
+              <TouchableOpacity style={[styles.consentBtn, styles.consentDecline]} onPress={() => { pendingTextRef.current=''; setConsentVisible(false); }}>
+                <Text style={styles.consentDeclineText}>{t('consent.decline', 'Not now')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.consentBtn, { backgroundColor: Colors.primary || '#7C3AED' }]} onPress={acceptAIConsent}>
+                <Text style={styles.consentAgreeText}>{t('consent.agree', 'I Agree')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -563,6 +611,18 @@ const styles_static = {
 function createStyles(Colors, isRTL) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
+    // AI consent modal
+    consentOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    consentCard: { width: '100%', maxWidth: 440, borderRadius: 18, padding: 22 },
+    consentTitle: { fontSize: 19, fontWeight: '800', marginBottom: 12, textAlign: isRTL ? 'right' : 'left' },
+    consentBody: { fontSize: 14, lineHeight: 22, textAlign: isRTL ? 'right' : 'left' },
+    consentLink: { paddingVertical: 12 },
+    consentLinkText: { fontSize: 14, fontWeight: '700', textAlign: isRTL ? 'right' : 'left' },
+    consentBtns: { flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 6 },
+    consentBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+    consentDecline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Colors.border },
+    consentDeclineText: { color: Colors.textMuted || '#888', fontWeight: '700', fontSize: 15 },
+    consentAgreeText: { color: '#fff', fontWeight: '800', fontSize: 15 },
     header: {
       flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', padding: 12, paddingHorizontal: 10,
       backgroundColor: Colors.card, borderBottomWidth: 1, borderBottomColor: Colors.border,
