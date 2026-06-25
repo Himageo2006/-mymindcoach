@@ -28,7 +28,7 @@ export const PLANS = {
     id: 'free',
     label: 'Free',
     price: '$0',
-    messagesPerDay: 5,
+    messagesPerDay: 20,
     journalPerWeek: 3,
     voiceMessages: false,
     allCoaches: false,
