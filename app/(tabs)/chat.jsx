@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useColors } from '../../src/context/ThemeContext';
 import { sendMessage } from '../../src/services/claude';
 import { getUserProfile, getAIConsent, setAIConsent } from '../../src/services/storage';
-import { canSendMessage, incrementMessageCount, FREE_LIMITS, getPlanConfig, buyMessagePack, getMessagePackProduct } from '../../src/services/subscription';
+import { canSendMessage, incrementMessageCount, FREE_LIMITS, getPlanConfig, buyMessagePack, getMessagePackProduct, reconcilePacks } from '../../src/services/subscription';
 import { getChatLanguage, getAppLanguage } from '../../src/services/language';
 import { extractAndSaveMemory } from '../../src/services/memory';
 import { tapLight, tapMedium, success, error as hapticError } from '../../src/services/haptics';
@@ -279,6 +279,7 @@ export default function Chat() {
       const { name, gender: userGenderVal } = await getUserProfile();
       setUserGender(userGenderVal);
       const checkup = await getLastCheckupResult();
+      await reconcilePacks().catch(() => {});   // credit any purchased packs not yet synced
       const { remaining: rem, extra: ex } = await canSendMessage();
       getMessagePackProduct().then(p => { if (p && isMounted.current) setPackPrice(p.priceString || ''); });
 
@@ -392,9 +393,22 @@ export default function Chat() {
       setMessages((prev) => [...prev, { id: Date.now().toString(), role: 'assistant', content: reply, time: new Date() }]);
       success();
     } catch (err) {
-      hapticError();
-      const isAr = (coach.language || i18n.language) === 'ar';
-      setError(isAr ? 'في حاجة غلط. حاولي/حاول تاني.' : 'Something went wrong. Please try again.');
+      if (err?.code === 'limit_reached') {
+        // Server-side quota exhausted — remove the un-sent message and surface the limit
+        setMessages(prev => prev.filter(m => m.id !== userMsg.id));
+        const { remaining: r, extra: ex } = await canSendMessage();
+        setRemaining(r);
+        setExtra(ex || 0);
+        if (!isPro) {
+          router.push('/paywall');
+        } else {
+          setError(i18n.language === 'ar' ? 'وصلت للحد اليومي — يتجدد بكرة.' : "You've reached today's limit — it resets tomorrow.");
+        }
+      } else {
+        hapticError();
+        const isAr = (coach.language || i18n.language) === 'ar';
+        setError(isAr ? 'في حاجة غلط. حاولي/حاول تاني.' : 'Something went wrong. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

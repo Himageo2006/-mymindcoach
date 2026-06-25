@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import * as Application from 'expo-application';
 
 const SERVER_URL = 'https://mindtalk-server-production.up.railway.app';
 const APP_KEY    = 'mk-app-2024-xK9pL3mNqR7vW2jT';
@@ -162,8 +163,36 @@ export async function buyMessagePack() {
   if (!Purchases) throw new Error('RevenueCat not initialized');
   const product = await getMessagePackProduct();
   if (!product) throw new Error('Message pack not available');
-  await Purchases.purchaseStoreProduct(product); // resolves only on a completed purchase
+  const { customerInfo } = await Purchases.purchaseStoreProduct(product); // resolves only on success
+  // Credit on the SERVER (survives reinstall, tamper-proof). Server reads the purchase
+  // from RevenueCat and de-dupes by transaction id, so this can't be replayed.
+  const serverExtra = await reconcilePacks(customerInfo?.originalAppUserId);
+  if (typeof serverExtra === 'number') return serverExtra;
+  // Offline fallback — credit locally; reconcilePacks() will sync it next time online.
   return addExtraMessages(MSG_PACK.messages);
+}
+
+/**
+ * Asks the server to credit any purchased packs not yet credited (idempotent).
+ * Returns the server-side extra balance, or null if it couldn't reach the server.
+ */
+export async function reconcilePacks(rcUserId) {
+  try {
+    const uid = rcUserId || (Purchases ? (await Purchases.getCustomerInfo()).originalAppUserId : null);
+    if (!uid) return null;
+    const deviceId = await getDeviceId();
+    const token = await getSubToken();
+    const res = await fetch(`${SERVER_URL}/api/usage/sync-packs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-key': APP_KEY, ...(token && { 'x-sub-token': token }) },
+      body: JSON.stringify({ deviceId, rcUserId: uid }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      if (typeof d.extra === 'number') return d.extra;
+    }
+  } catch { /* offline */ }
+  return null;
 }
 
 export async function restorePurchases() {
@@ -196,6 +225,24 @@ export async function addExtraMessages(n) {
 //   extra      — purchased pay-as-you-go messages left
 //   allowed    — can send if EITHER bucket has room
 export async function canSendMessage() {
+  // ── Server is the source of truth (survives reinstall / clear-data) ──────────
+  try {
+    const deviceId = await getDeviceId();
+    const token = await getSubToken();
+    const res = await fetch(`${SERVER_URL}/api/usage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-app-key': APP_KEY, ...(token && { 'x-sub-token': token }) },
+      body: JSON.stringify({ deviceId }),
+    });
+    if (res.ok) {
+      const u = await res.json();
+      if (u.enforced) {
+        return { allowed: u.remaining > 0 || u.extra > 0, remaining: u.remaining, extra: u.extra };
+      }
+    }
+  } catch { /* offline or enforcement off → local fallback below */ }
+
+  // ── Local fallback (offline, or Upstash not configured server-side) ──────────
   const plan = await getPlanConfig();
   const extra = await getExtraBalance();
   if (plan.messagesPerDay === Infinity) return { allowed: true, remaining: Infinity, extra };
@@ -203,14 +250,12 @@ export async function canSendMessage() {
   const today = new Date().toDateString();
   const savedDate = await AsyncStorage.getItem(MSG_DATE_KEY);
   let count = 0;
-
   if (savedDate === today) {
     count = parseInt(await AsyncStorage.getItem(MSG_COUNT_KEY) || '0');
   } else {
     await AsyncStorage.setItem(MSG_DATE_KEY, today);
     await AsyncStorage.setItem(MSG_COUNT_KEY, '0');
   }
-
   const remaining = Math.max(0, plan.messagesPerDay - count);
   return { allowed: remaining > 0 || extra > 0, remaining, extra };
 }
@@ -298,17 +343,23 @@ export async function clearSubToken() {
  * Used to bind subscription tokens to a device so tokens can't be shared.
  */
 export async function getDeviceId() {
+  // Android: use SSAID (survives reinstall; SecureStore is wiped on uninstall here).
+  try {
+    if (Platform.OS === 'android') {
+      const ssaid = Application.getAndroidId?.();
+      if (ssaid) return `and-${ssaid}`;
+    }
+  } catch { /* fall through */ }
+  // iOS + fallback: Keychain-backed SecureStore (persists across reinstall on iOS).
   try {
     let id = await SecureStore.getItemAsync(SECURE_DEVICE_ID);
     if (!id) {
-      // Generate a random ID and persist it permanently
       const rand = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
       id = `mk-${rand}-${Date.now().toString(36)}`;
       await SecureStore.setItemAsync(SECURE_DEVICE_ID, id);
     }
     return id;
   } catch {
-    // Fallback if SecureStore unavailable (simulators sometimes)
     return `fallback-${Math.random().toString(36).slice(2)}`;
   }
 }

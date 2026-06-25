@@ -47,6 +47,8 @@ export async function sendMessage(messages, userName = 'friend', coachName = 'Sa
     ? [messages[0], ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1))]
     : messages;
 
+  const deviceId = await getDeviceId();   // stable id for server-side usage enforcement
+
   const bodyObj = {
     messages: contextMessages.map((msg) => ({ role: msg.role, content: msg.content })),
     userName,
@@ -59,6 +61,7 @@ export async function sendMessage(messages, userName = 'friend', coachName = 'Sa
     coachId,
     checkup,
     userGender,
+    deviceId,
   };
 
   const bodyStr = JSON.stringify(bodyObj);
@@ -82,7 +85,13 @@ export async function sendMessage(messages, userName = 'friend', coachName = 'Sa
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({}));
+    // Server-side daily/pack limit reached (anti-reset enforcement)
+    if (response.status === 402 || error.error === 'limit_reached') {
+      const e = new Error('limit_reached');
+      e.code = 'limit_reached';
+      throw e;
+    }
     throw new Error(error.error || 'Request failed');
   }
 
