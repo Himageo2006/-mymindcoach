@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useColors } from '../../src/context/ThemeContext';
 import { sendMessage } from '../../src/services/claude';
 import { getUserProfile, getAIConsent, setAIConsent } from '../../src/services/storage';
-import { canSendMessage, incrementMessageCount, FREE_LIMITS, getPlanConfig } from '../../src/services/subscription';
+import { canSendMessage, incrementMessageCount, FREE_LIMITS, getPlanConfig, buyMessagePack, getMessagePackProduct } from '../../src/services/subscription';
 import { getChatLanguage, getAppLanguage } from '../../src/services/language';
 import { extractAndSaveMemory } from '../../src/services/memory';
 import { tapLight, tapMedium, success, error as hapticError } from '../../src/services/haptics';
@@ -226,6 +226,10 @@ export default function Chat() {
   const [userGender, setUserGender] = useState(null);
   const [error, setError] = useState('');
   const [remaining, setRemaining] = useState(FREE_LIMITS.messagesPerDay);
+  const [isPro, setIsPro] = useState(false);
+  const [extra, setExtra] = useState(0);          // purchased pay-as-you-go messages left
+  const [packPrice, setPackPrice] = useState(''); // localized price string for the 100-pack
+  const [buying, setBuying] = useState(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const isRecording = audioRecorder.isRecording;
   const [transcribing, setTranscribing] = useState(false);
@@ -270,16 +274,19 @@ export default function Chat() {
       const lang = await getAppLanguage();
       const plan = await getPlanConfig();
       setVoiceEnabled(plan.voiceMessages);
+      setIsPro(plan.id !== 'free');
       const selectedCoach = await getSelectedCoach(lang);
       const { name, gender: userGenderVal } = await getUserProfile();
       setUserGender(userGenderVal);
       const checkup = await getLastCheckupResult();
-      const { remaining: rem } = await canSendMessage();
+      const { remaining: rem, extra: ex } = await canSendMessage();
+      getMessagePackProduct().then(p => { if (p && isMounted.current) setPackPrice(p.priceString || ''); });
 
       if (!isMounted.current) return;
       setCoach(selectedCoach);
       setUserName(name);
       setRemaining(rem);
+      setExtra(ex || 0);
       setMessages([{
         id: '0',
         role: 'assistant',
@@ -306,6 +313,27 @@ export default function Chat() {
     if (t) handleSend(t);
   }
 
+  async function handleBuyPack() {
+    if (buying) return;
+    setBuying(true);
+    try {
+      await buyMessagePack();
+      setError('');
+      const { remaining: rem, extra: ex } = await canSendMessage();
+      setRemaining(rem);
+      setExtra(ex || 0);
+    } catch (e) {
+      // User-cancelled purchases shouldn't surface as an error
+      if (!/cancel/i.test(e?.message || '')) {
+        setError(i18n.language === 'ar'
+          ? 'تعذّر إتمام الشراء. حاول مرة أخرى.'
+          : 'Purchase could not be completed. Please try again.');
+      }
+    } finally {
+      setBuying(false);
+    }
+  }
+
   async function handleSend(text) {
     const userText = (text || input).trim();
     if (!userText || loading) return;
@@ -319,7 +347,11 @@ export default function Chat() {
 
     const { allowed } = await canSendMessage();
     if (!allowed) {
-      router.push('/paywall');
+      if (isPro) {
+        setError("You've reached today's limit — it resets tomorrow.");
+      } else {
+        router.push('/paywall');
+      }
       return;
     }
 
@@ -340,8 +372,9 @@ export default function Chat() {
       // Small natural delay so it doesn't feel robotic
       await new Promise(r => setTimeout(r, 900));
       await incrementMessageCount();
-      const { remaining: newRem } = await canSendMessage();
+      const { remaining: newRem, extra: newExtra } = await canSendMessage();
       setRemaining(newRem);
+      setExtra(newExtra || 0);
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: canned, time: new Date() }]);
       success();
       setLoading(false);
@@ -353,8 +386,9 @@ export default function Chat() {
       const checkup = await getLastCheckupResult();
       const reply = await sendMessage(apiMessages, userName, coach.name, coach.gender, checkup, coach.language, coach.id, userGender);
       await incrementMessageCount();
-      const { remaining: newRem } = await canSendMessage();
+      const { remaining: newRem, extra: newExtra } = await canSendMessage();
       setRemaining(newRem);
+      setExtra(newExtra || 0);
       setMessages((prev) => [...prev, { id: Date.now().toString(), role: 'assistant', content: reply, time: new Date() }]);
       success();
     } catch (err) {
@@ -508,15 +542,42 @@ export default function Chat() {
           </View>
         )}
 
-        {remaining <= 3 && remaining !== Infinity && (
-          <TouchableOpacity style={styles.limitBanner} onPress={() => router.push('/paywall')}>
-            <Text style={styles.limitText}>
-              {remaining === 0
-                ? '🔒 Session limit reached — Upgrade for unlimited sessions'
-                : `⚡ ${remaining} free session${remaining === 1 ? '' : 's'} left today`}
-            </Text>
-          </TouchableOpacity>
-        )}
+        {/* Pro (monthly/yearly): hide the counter — only show if they exceed the cap.
+            Free: show the countdown when low. When both daily + pack are empty, offer
+            the pay-as-you-go pack (and Upgrade for free users). */}
+        {remaining !== Infinity && (extra > 0 || (isPro ? remaining <= 0 : remaining <= 3)) && (() => {
+          const ar = i18n.language === 'ar';
+          const blocked = remaining === 0 && extra === 0;
+          return (
+            <View style={styles.limitBanner}>
+              <Text style={styles.limitText}>
+                {extra > 0
+                  ? (ar ? `💬 باقي ${extra} رسالة إضافية` : `💬 ${extra} extra message${extra === 1 ? '' : 's'} left`)
+                  : isPro
+                    ? (ar ? '🔒 وصلت للحد اليومي — يتجدد بكرة' : "🔒 You've reached today's limit — it resets tomorrow")
+                    : remaining === 0
+                      ? (ar ? '🔒 خلصت رسائل النهارده' : '🔒 Daily limit reached')
+                      : (ar ? `⚡ باقي ${remaining} رسالة مجانية النهارده` : `⚡ ${remaining} free message${remaining === 1 ? '' : 's'} left today`)}
+              </Text>
+              {blocked && (
+                <View style={styles.limitActions}>
+                  <TouchableOpacity onPress={handleBuyPack} disabled={buying} style={styles.packBtn}>
+                    <Text style={styles.packBtnText}>
+                      {buying
+                        ? (ar ? '...جاري الشراء' : 'Purchasing…')
+                        : (ar ? `+100 رسالة${packPrice ? ' · ' + packPrice : ''}` : `+100 messages${packPrice ? ' · ' + packPrice : ''}`)}
+                    </Text>
+                  </TouchableOpacity>
+                  {!isPro && (
+                    <TouchableOpacity onPress={() => router.push('/paywall')}>
+                      <Text style={styles.upgradeLink}>{ar ? 'اشترك' : 'Upgrade'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {error ? (
           <View style={styles.errorBox}>
@@ -691,6 +752,14 @@ function createStyles(Colors, isRTL) {
       borderRightWidth: isRTL ? 4 : 0, borderRightColor: Colors.warning,
     },
     limitText: { color: Colors.warning, fontSize: 13, fontWeight: '600', textAlign: isRTL ? 'right' : 'left' },
+    limitActions: {
+      flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 14, marginTop: 10,
+    },
+    packBtn: {
+      backgroundColor: Colors.primary, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10,
+    },
+    packBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+    upgradeLink: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
     errorBox: {
       backgroundColor: Colors.card, margin: 16, padding: 12, borderRadius: 12,
       borderLeftWidth: isRTL ? 0 : 4, borderLeftColor: Colors.error,

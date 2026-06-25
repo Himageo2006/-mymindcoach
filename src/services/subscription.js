@@ -10,8 +10,17 @@ const PREMIUM_KEY      = 'is_premium';
 const PLAN_KEY         = 'active_plan';       // 'free' | 'pro_monthly' | 'pro_annual'
 const MSG_COUNT_KEY    = 'daily_msg_count';
 const MSG_DATE_KEY     = 'daily_msg_date';
+const EXTRA_MSG_KEY    = 'extra_msg_balance';   // purchased pay-as-you-go messages (does NOT reset daily)
 const JOURNAL_COUNT_KEY = 'weekly_journal_count';
 const JOURNAL_WEEK_KEY  = 'weekly_journal_week';
+
+// ─── Pay-as-you-go message pack (consumable IAP) ─────────────────────────────
+// Same product ID must exist in App Store Connect + Play Console (consumable type)
+// and be registered in RevenueCat.
+export const MSG_PACK = {
+  productId: 'mt_msg_pack_100',   // Play PRODUCT ID (underscores) & App Store product ID — must match both stores
+  messages: 100,
+};
 
 // ─── Plan definitions ─────────────────────────────────────────────────────────
 export const PLANS = {
@@ -19,7 +28,7 @@ export const PLANS = {
     id: 'free',
     label: 'Free',
     price: '$0',
-    messagesPerDay: 20,
+    messagesPerDay: 5,
     journalPerWeek: 3,
     voiceMessages: false,
     allCoaches: false,
@@ -60,13 +69,15 @@ export const FREE_LIMITS = {
 let Purchases = null;
 
 const RC_ANDROID_KEY = 'goog_dlgPJbtRNqbqLNrNVovPAEPWcGu';
+const RC_IOS_KEY     = 'appl_jkKvhEwbuGEDctNTaeGxrgprGVm';
 
 export async function initRevenueCat() {
   if (Platform.OS === 'web') return;
   try {
     const rc = await import('react-native-purchases');
     Purchases = rc.default;
-    await Purchases.configure({ apiKey: RC_ANDROID_KEY });
+    const apiKey = Platform.OS === 'ios' ? RC_IOS_KEY : RC_ANDROID_KEY;
+    await Purchases.configure({ apiKey });
   } catch (e) {
     console.log('[RC] init failed:', e.message);
   }
@@ -129,6 +140,32 @@ export async function purchasePremium(pkg) {
   return customerInfo;
 }
 
+/** Returns the message-pack store product (for showing localized price), or null. */
+export async function getMessagePackProduct() {
+  if (!Purchases) return null;
+  try {
+    const products = await Purchases.getProducts(
+      [MSG_PACK.productId],
+      Purchases.PRODUCT_CATEGORY.NON_SUBSCRIPTION,
+    );
+    return products && products.length ? products[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Buys the pay-as-you-go consumable pack and credits MSG_PACK.messages locally.
+ * Throws on cancel/failure (purchaseStoreProduct rejects). Returns the new balance.
+ */
+export async function buyMessagePack() {
+  if (!Purchases) throw new Error('RevenueCat not initialized');
+  const product = await getMessagePackProduct();
+  if (!product) throw new Error('Message pack not available');
+  await Purchases.purchaseStoreProduct(product); // resolves only on a completed purchase
+  return addExtraMessages(MSG_PACK.messages);
+}
+
 export async function restorePurchases() {
   if (!Purchases) throw new Error('RevenueCat not initialized');
   const customerInfo = await Purchases.restorePurchases();
@@ -140,10 +177,28 @@ export async function restorePurchases() {
   return customerInfo;
 }
 
+// ─── Pay-as-you-go balance ───────────────────────────────────────────────────
+/** Purchased extra messages remaining (persists across days until used). */
+export async function getExtraBalance() {
+  return parseInt(await AsyncStorage.getItem(EXTRA_MSG_KEY) || '0', 10) || 0;
+}
+
+/** Credit purchased messages (call after a successful pack purchase). */
+export async function addExtraMessages(n) {
+  const balance = await getExtraBalance();
+  await AsyncStorage.setItem(EXTRA_MSG_KEY, String(balance + n));
+  return balance + n;
+}
+
 // ─── Usage tracking ──────────────────────────────────────────────────────────
+// Returns:
+//   remaining  — today's free/plan messages left (drives the countdown banner)
+//   extra      — purchased pay-as-you-go messages left
+//   allowed    — can send if EITHER bucket has room
 export async function canSendMessage() {
   const plan = await getPlanConfig();
-  if (plan.messagesPerDay === Infinity) return { allowed: true, remaining: Infinity };
+  const extra = await getExtraBalance();
+  if (plan.messagesPerDay === Infinity) return { allowed: true, remaining: Infinity, extra };
 
   const today = new Date().toDateString();
   const savedDate = await AsyncStorage.getItem(MSG_DATE_KEY);
@@ -156,15 +211,27 @@ export async function canSendMessage() {
     await AsyncStorage.setItem(MSG_COUNT_KEY, '0');
   }
 
-  const remaining = plan.messagesPerDay - count;
-  return { allowed: remaining > 0, remaining: Math.max(0, remaining) };
+  const remaining = Math.max(0, plan.messagesPerDay - count);
+  return { allowed: remaining > 0 || extra > 0, remaining, extra };
 }
 
+// Spends one message: free/plan allowance first, then the purchased pack balance.
 export async function incrementMessageCount() {
+  const plan = await getPlanConfig();
   const today = new Date().toDateString();
-  await AsyncStorage.setItem(MSG_DATE_KEY, today);
-  const count = parseInt(await AsyncStorage.getItem(MSG_COUNT_KEY) || '0');
-  await AsyncStorage.setItem(MSG_COUNT_KEY, String(count + 1));
+  const savedDate = await AsyncStorage.getItem(MSG_DATE_KEY);
+  const count = (savedDate === today)
+    ? parseInt(await AsyncStorage.getItem(MSG_COUNT_KEY) || '0', 10)
+    : 0;
+
+  const dailyLimit = plan.messagesPerDay; // may be Infinity
+  if (count < dailyLimit) {
+    await AsyncStorage.setItem(MSG_DATE_KEY, today);
+    await AsyncStorage.setItem(MSG_COUNT_KEY, String(count + 1));
+  } else {
+    const extra = await getExtraBalance();
+    if (extra > 0) await AsyncStorage.setItem(EXTRA_MSG_KEY, String(extra - 1));
+  }
 }
 
 export async function canWriteJournal() {
