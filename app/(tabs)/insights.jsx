@@ -48,6 +48,8 @@ export default function Insights() {
       getMoodHistory().then(setMoodHistory);
       getStreak().then(setStreak);
       getUserProfile().then(({ name }) => setName(name));
+      // Ask for a rating at this positive, reflective moment (fires once, when engaged)
+      import('../../src/services/review').then(({ maybeRequestReview }) => maybeRequestReview()).catch(() => {});
     }, [])
   );
 

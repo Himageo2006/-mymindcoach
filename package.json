@@ -25,6 +25,7 @@
     "expo-speech": "~56.0.3",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
+    "expo-store-review": "~56.0.3",
     "i18next": "^26.2.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

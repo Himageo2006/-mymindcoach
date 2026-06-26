@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, Platform, Share
+  ScrollView, Platform, Share, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
@@ -55,8 +55,33 @@ export default function Home() {
       getUserProfile().then(setProfile);
       getStreak().then(setStreak);
       getMoodHistory().then((h) => setRecentMoods(h.slice(0, 3)));
+      maybePromptNotifications();
     }, [])
   );
+
+  // One-time soft prompt to turn on daily reminders — only once the user has engaged.
+  async function maybePromptNotifications() {
+    try {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      if (await AsyncStorage.getItem('notif_prompt_shown')) return;
+      const { isNotificationsEnabled, scheduleDaily } = await import('../../src/services/notifications');
+      if (await isNotificationsEnabled()) return;
+      const [st, hist] = await Promise.all([getStreak(), getMoodHistory()]);
+      if (st < 1 && (!hist || hist.length < 1)) return;   // wait until they've engaged once
+      await AsyncStorage.setItem('notif_prompt_shown', '1');
+      const { getAppLanguage } = await import('../../src/services/language');
+      const lang = (await getAppLanguage()) || 'en';
+      const ar = lang === 'ar';
+      Alert.alert(
+        ar ? 'تذكير يومي 🔔' : 'Daily check-in 🔔',
+        ar ? 'تحب نفكّرك كل يوم تطمن على مزاجك؟' : 'Want a gentle daily reminder to check in on your mood?',
+        [
+          { text: ar ? 'مش دلوقتي' : 'Not now', style: 'cancel' },
+          { text: ar ? 'تفعيل' : 'Turn on', onPress: () => scheduleDaily(9, 0, lang) },
+        ],
+      );
+    } catch { /* never block home on this */ }
+  }
 
   const quote = t.quotes[new Date().getDay() % t.quotes.length];
 

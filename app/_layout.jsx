@@ -190,6 +190,11 @@ export default function RootLayout() {
   useEffect(() => {
     initLanguage().catch(() => {});
     initRevenueCat().catch(() => {});
+    // Re-arm re-engagement notifications on every app open (no-op if disabled)
+    import('../src/services/language')
+      .then(({ getAppLanguage }) => getAppLanguage())
+      .then((lang) => import('../src/services/notifications').then(({ refreshEngagement }) => refreshEngagement(lang || 'en')))
+      .catch(() => {});
 
     const startMs = Date.now();
 

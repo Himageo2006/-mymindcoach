@@ -1,6 +1,27 @@
-// expo-notifications disabled until production — all functions are safe no-ops
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+
+// Show notifications while the app is foregrounded too
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false,
+  }),
+});
+
+const DAILY = Notifications.SchedulableTriggerInputTypes?.DAILY ?? 'daily';
+const DATE  = Notifications.SchedulableTriggerInputTypes?.DATE  ?? 'date';
+
+async function ensureAndroidChannel() {
+  if (Platform.OS === 'android') {
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Reminders',
+        importance: Notifications.AndroidImportance?.DEFAULT ?? 3,
+      });
+    } catch {}
+  }
+}
 
 const NOTIF_ENABLED_KEY = 'notifications_enabled';
 const NOTIF_HOUR_KEY = 'notifications_hour';
@@ -227,16 +248,30 @@ function getRandomMessage(lang) {
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-// ─── Stubbed — expo-notifications removed until production ───────────────────
+// ─── Real scheduling (expo-notifications) ────────────────────────────────────
+
+const WINBACK = {
+  en: ["Your coach is here whenever you're ready. 💙", "It's been a couple of days — how are you feeling? 🌱"],
+  ar: ["مدربك هنا في أي وقت تكون جاهز. 💙", "عدّى كام يوم — إزاي مشاعرك؟ 🌱"],
+  es: ["Tu coach está aquí cuando estés listo. 💙", "Han pasado unos días, ¿cómo te sientes? 🌱"],
+  fr: ["Votre coach est là quand vous voulez. 💙", "Ça fait quelques jours — comment allez-vous? 🌱"],
+};
+const winbackMsgs = (lang) => WINBACK[lang] || WINBACK.en;
 
 export async function requestNotificationPermission() {
-  // expo-notifications not available — return false
-  return false;
+  try {
+    await ensureAndroidChannel();
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') return true;
+    const { status: s2 } = await Notifications.requestPermissionsAsync();
+    return s2 === 'granted';
+  } catch {
+    return false;
+  }
 }
 
 export async function isNotificationsEnabled() {
-  const val = await AsyncStorage.getItem(NOTIF_ENABLED_KEY);
-  return val === 'true';
+  return (await AsyncStorage.getItem(NOTIF_ENABLED_KEY)) === 'true';
 }
 
 export async function getNotificationTime() {
@@ -245,13 +280,48 @@ export async function getNotificationTime() {
   return { hour, minute };
 }
 
+// Schedules the daily check-in reminder + arms win-back nudges. Returns true if scheduled.
 export async function scheduleDaily(hour, minute, lang = 'en') {
-  // expo-notifications not available — save prefs only, no actual scheduling
-  await AsyncStorage.setItem(NOTIF_ENABLED_KEY, 'true');
-  await AsyncStorage.setItem(NOTIF_HOUR_KEY, String(hour));
-  await AsyncStorage.setItem(NOTIF_MINUTE_KEY, String(minute));
+  const ok = await requestNotificationPermission();
+  if (!ok) return false;
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: NOTIF_TITLES[lang] || NOTIF_TITLES.en, body: getRandomMessage(lang) },
+    trigger: { type: DAILY, hour, minute },
+  });
+  await AsyncStorage.multiSet([[NOTIF_ENABLED_KEY, 'true'], [NOTIF_HOUR_KEY, String(hour)], [NOTIF_MINUTE_KEY, String(minute)]]);
+  await scheduleWinBack(lang);
+  return true;
 }
 
 export async function cancelNotifications() {
+  try { await Notifications.cancelAllScheduledNotificationsAsync(); } catch {}
   await AsyncStorage.setItem(NOTIF_ENABLED_KEY, 'false');
+}
+
+// Win-back nudges fire only if the user does NOT reopen the app (re-armed each open).
+export async function scheduleWinBack(lang = 'en') {
+  const msgs = winbackMsgs(lang);
+  const days = [2, 4];
+  for (let i = 0; i < days.length; i++) {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: NOTIF_TITLES[lang] || NOTIF_TITLES.en, body: msgs[i] || msgs[0] },
+      trigger: { type: DATE, date: new Date(Date.now() + days[i] * 86400000) },
+    });
+  }
+}
+
+// Call on every app open: re-arms the daily + pushes the win-back nudges out
+// (so they only fire for users who actually stayed away). No-op if disabled.
+export async function refreshEngagement(lang = 'en') {
+  if (!(await isNotificationsEnabled())) return;
+  const ok = await requestNotificationPermission();
+  if (!ok) return;
+  const { hour, minute } = await getNotificationTime();
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.scheduleNotificationAsync({
+    content: { title: NOTIF_TITLES[lang] || NOTIF_TITLES.en, body: getRandomMessage(lang) },
+    trigger: { type: DAILY, hour, minute },
+  });
+  await scheduleWinBack(lang);
 }
