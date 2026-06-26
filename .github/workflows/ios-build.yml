@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -13,21 +13,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Setup EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build iOS locally (no cloud credits used)
+      # Cloud build on EAS (Expo's macOS infra) + auto-submit to App Store Connect.
+      # The local (--local) path failed building the ExpoModulesJSI xcframework on the
+      # GitHub macOS runner; EAS Cloud uses a controlled toolchain that builds this stack.
+      - name: Build & submit iOS on EAS Cloud
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ios --profile production --local --non-interactive --output build.ipa
-
-      - name: Submit to App Store Connect
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas submit --platform ios --path build.ipa --non-interactive
+        run: eas build --platform ios --profile production --non-interactive --auto-submit
