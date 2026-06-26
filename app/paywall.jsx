@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ActivityIndicator, ScrollView, Alert,
+  ActivityIndicator, ScrollView, Alert, Linking,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useColors } from '../src/context/ThemeContext';
@@ -189,6 +189,17 @@ export default function Paywall() {
 
         <Text style={[styles.legal, { color: Colors.textLight }]}>{legal}</Text>
 
+        {/* Apple 3.1.2(c): functional Terms of Use (EULA) + Privacy Policy links required in the purchase flow */}
+        <View style={styles.linksRow}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+            <Text style={[styles.linkText, { color: Colors.primary }]}>Terms of Use (EULA)</Text>
+          </TouchableOpacity>
+          <Text style={[styles.linkSep, { color: Colors.textLight }]}>·</Text>
+          <TouchableOpacity onPress={() => router.push('/privacy')}>
+            <Text style={[styles.linkText, { color: Colors.primary }]}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity onPress={handleRestore} disabled={buying} style={styles.restoreBtn}>
           <Text style={[styles.restoreText, { color: Colors.primary }]}>Restore Purchase</Text>
         </TouchableOpacity>
@@ -222,7 +233,10 @@ const styles = StyleSheet.create({
   featureText:  { fontSize: 14, flex: 1 },
   cta:          { borderRadius: 14, padding: 17, alignItems: 'center', marginBottom: 14 },
   ctaText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
-  legal:        { fontSize: 12, textAlign: 'center', lineHeight: 18, marginBottom: 16 },
+  legal:        { fontSize: 12, textAlign: 'center', lineHeight: 18, marginBottom: 10 },
+  linksRow:     { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 12 },
+  linkText:     { fontSize: 12, fontWeight: '600' },
+  linkSep:      { fontSize: 12 },
   restoreBtn:   { alignItems: 'center', paddingVertical: 8 },
   restoreText:  { fontSize: 14, fontWeight: '600' },
   skipBtn:      { alignItems: 'center', paddingVertical: 12 },
