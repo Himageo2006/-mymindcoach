@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -22,10 +22,29 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # Cloud build on EAS (Expo's macOS infra) + auto-submit to App Store Connect.
-      # The local (--local) path failed building the ExpoModulesJSI xcframework on the
-      # GitHub macOS runner; EAS Cloud uses a controlled toolchain that builds this stack.
-      - name: Build & submit iOS on EAS Cloud
+      # Local build = free (no EAS cloud credits). Keep the build dir so we can read
+      # the (otherwise suppressed) Xcode log if the ExpoModulesJSI xcframework step fails.
+      - name: Build iOS locally (no cloud credits used)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ios --profile production --non-interactive --auto-submit
+          EAS_LOCAL_BUILD_SKIP_CLEANUP: "1"
+        run: eas build --platform ios --profile production --local --non-interactive --output build.ipa
+
+      - name: Surface Xcode build log on failure
+        if: failure()
+        run: |
+          echo "===== Searching for xcodebuild logs ====="
+          find "${TMPDIR:-/tmp}" /var/folders -path "*eas-build*" -name "*.log" 2>/dev/null | while read -r f; do
+            echo ""
+            echo "########## $f ##########"
+            tail -250 "$f"
+          done
+          echo "===== Searching for xcresult / ExpoModulesJSI script output ====="
+          find "${TMPDIR:-/tmp}" /var/folders -name "Script-*.sh" -path "*ExpoModulesJSI*" 2>/dev/null | while read -r s; do
+            echo "########## $s ##########"; cat "$s"
+          done
+
+      - name: Submit to App Store Connect
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit --platform ios --path build.ipa --non-interactive
