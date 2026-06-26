@@ -23,7 +23,11 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build iOS locally (no cloud credits used)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas build --platform ios --profile production --local --non-interactive --output build.ipa
 
       - name: Submit to App Store Connect
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas submit --platform ios --path build.ipa --non-interactive
