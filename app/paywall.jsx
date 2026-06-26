@@ -3,38 +3,40 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ActivityIndicator, ScrollView, Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useColors } from '../src/context/ThemeContext';
 import { getOfferings, purchasePremium, restorePurchases } from '../src/services/subscription';
 
 const FEATURES = [
-  { icon: '💬', text: '300–500 AI messages per day' },
-  { icon: '📝', text: 'Unlimited journal entries' },
+  { icon: '💬', text: 'Up to 500 coaching messages a day' },
+  { icon: '📝', text: 'Unlimited journaling' },
   { icon: '📊', text: '90-day mood history & insights' },
   { icon: '🎤', text: 'Voice messages' },
-  { icon: '🌍', text: '30+ coaches in multiple languages' },
-  { icon: '🧠', text: 'Claude Sonnet — smarter responses' },
+  { icon: '🌍', text: 'Every coach, in your language' },
+  { icon: '⚡', text: 'Priority responses, no daily wall' },
 ];
 
-const FALLBACK_PLANS = [
-  {
-    id: 'monthly',
-    label: 'Monthly',
-    price: '$12.99',
-    period: '/month',
-    badge: null,
-  },
-  {
-    id: 'annual',
-    label: 'Annual',
-    price: '$59.99',
-    period: '/year',
-    badge: 'Save 62%',
-  },
-];
+// Extract the currency symbol/prefix from a localized price string ("$12.99" -> "$").
+function currencyPrefix(priceString = '') {
+  const m = priceString.match(/^[^\d]*/);
+  return (m && m[0]) ? m[0].trim() : '';
+}
+
+// Free-trial length in days from a product's intro offer, or 0 if none.
+function trialDays(pkg) {
+  const ip = pkg?.product?.introPrice;
+  if (!ip || ip.price !== 0) return 0;
+  const n = ip.periodNumberOfUnits || 0;
+  const unit = ip.periodUnit;
+  if (unit === 'WEEK') return n * 7;
+  if (unit === 'MONTH') return n * 30;
+  if (unit === 'YEAR') return n * 365;
+  return n; // DAY
+}
 
 export default function Paywall() {
   const Colors = useColors();
+  const { goal } = useLocalSearchParams();
   const [offerings, setOfferings] = useState(null);
   const [selected, setSelected] = useState('annual');
   const [loading, setLoading] = useState(true);
@@ -47,11 +49,14 @@ export default function Paywall() {
     });
   }, []);
 
-  const getPackage = useCallback(() => {
+  const pkgFor = useCallback((planId) => {
     if (!offerings) return null;
-    if (selected === 'annual') return offerings.annual || offerings.twoMonth || null;
-    return offerings.monthly || null;
-  }, [offerings, selected]);
+    return planId === 'annual'
+      ? offerings.annual || offerings.twoMonth || null
+      : offerings.monthly || null;
+  }, [offerings]);
+
+  const getPackage = useCallback(() => pkgFor(selected), [pkgFor, selected]);
 
   const handlePurchase = async () => {
     setBuying(true);
@@ -64,9 +69,7 @@ export default function Paywall() {
       await purchasePremium(pkg);
       router.replace('/(tabs)');
     } catch (e) {
-      if (!e.userCancelled) {
-        Alert.alert('Purchase failed', e.message || 'Please try again.');
-      }
+      if (!e.userCancelled) Alert.alert('Purchase failed', e.message || 'Please try again.');
     } finally {
       setBuying(false);
     }
@@ -77,11 +80,8 @@ export default function Paywall() {
     try {
       const info = await restorePurchases();
       const hasActive = Object.keys(info.entitlements.active || {}).length > 0;
-      if (hasActive) {
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert('No purchases found', 'No active subscription was found for this account.');
-      }
+      if (hasActive) router.replace('/(tabs)');
+      else Alert.alert('No purchases found', 'No active subscription was found for this account.');
     } catch (e) {
       Alert.alert('Restore failed', e.message || 'Please try again.');
     } finally {
@@ -89,39 +89,63 @@ export default function Paywall() {
     }
   };
 
-  const getPriceLabel = (planId) => {
-    if (offerings) {
-      const pkg = planId === 'annual'
-        ? offerings.annual || offerings.twoMonth
-        : offerings.monthly;
-      if (pkg) return pkg.product.priceString;
-    }
+  // ── Derived pricing (live from store, with fallbacks) ────────────────────────
+  const annualPkg = pkgFor('annual');
+  const monthlyPkg = pkgFor('monthly');
+  const annualPrice = annualPkg?.product?.price ?? 59.99;
+  const monthlyPrice = monthlyPkg?.product?.price ?? 12.99;
+  const sym = currencyPrefix(annualPkg?.product?.priceString || monthlyPkg?.product?.priceString || '$');
+
+  const priceLabel = (planId) => {
+    const pkg = pkgFor(planId);
+    if (pkg) return pkg.product.priceString;
     return planId === 'annual' ? '$59.99' : '$12.99';
   };
+  // Annual shown as a per-month figure — the anchor that lifts conversions.
+  const annualPerMonth = `${sym}${(annualPrice / 12).toFixed(2)}/mo`;
+  const savingsPct = monthlyPrice > 0
+    ? Math.max(0, Math.round((1 - annualPrice / (monthlyPrice * 12)) * 100))
+    : 0;
+
+  const selectedPkg = getPackage();
+  const days = trialDays(selectedPkg);
+  const headline = goal
+    ? `Keep working through ${goal} with your coach`
+    : 'Unlimited coaching, whenever you need it';
+  const subtitle = days
+    ? `Try Pro free for ${days} days — cancel anytime.`
+    : 'Unlock unlimited messages and every coach.';
+  const ctaText = days
+    ? `Start my ${days}-day free trial`
+    : (selected === 'annual' ? 'Start annual plan' : 'Start monthly plan');
+  const legal = days
+    ? `${days}-day free trial, then ${priceLabel(selected)}${selected === 'annual' ? '/year' : '/month'}. Cancel anytime in your account settings — no charge until the trial ends.`
+    : 'Subscription renews automatically. Cancel anytime in your account settings.';
+
+  const PLANS = [
+    { id: 'monthly', label: 'Monthly', sub: 'billed monthly', badge: null },
+    { id: 'annual', label: 'Annual', sub: `${annualPerMonth} · billed yearly`, badge: savingsPct ? `Save ${savingsPct}%` : 'Best value' },
+  ];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.crown]}>👑</Text>
-          <Text style={[styles.title, { color: Colors.text }]}>Upgrade to Pro</Text>
-          <Text style={[styles.subtitle, { color: Colors.textLight }]}>
-            Unlock unlimited coaching and smarter AI responses
-          </Text>
+          <Text style={styles.crown}>👑</Text>
+          <Text style={[styles.title, { color: Colors.text }]}>{headline}</Text>
+          <Text style={[styles.subtitle, { color: Colors.textLight }]}>{subtitle}</Text>
         </View>
 
-        {/* Plan selector */}
-        <View style={[styles.planRow]}>
-          {FALLBACK_PLANS.map((plan) => {
+        <View style={styles.planRow}>
+          {PLANS.map((plan) => {
             const active = selected === plan.id;
             return (
               <TouchableOpacity
                 key={plan.id}
-                style={[
-                  styles.planCard,
-                  { borderColor: active ? Colors.primary : Colors.border || '#E0E0E0', backgroundColor: active ? Colors.primary + '18' : Colors.card },
-                ]}
+                style={[styles.planCard, {
+                  borderColor: active ? Colors.primary : Colors.border || '#E0E0E0',
+                  backgroundColor: active ? Colors.primary + '18' : Colors.card,
+                }]}
                 onPress={() => setSelected(plan.id)}
                 activeOpacity={0.8}
               >
@@ -132,9 +156,9 @@ export default function Paywall() {
                 )}
                 <Text style={[styles.planLabel, { color: Colors.text }]}>{plan.label}</Text>
                 <Text style={[styles.planPrice, { color: active ? Colors.primary : Colors.text }]}>
-                  {loading ? '...' : getPriceLabel(plan.id)}
+                  {loading ? '...' : priceLabel(plan.id)}
                 </Text>
-                <Text style={[styles.planPeriod, { color: Colors.textLight }]}>{plan.period}</Text>
+                <Text style={[styles.planPeriod, { color: Colors.textLight }]}>{plan.sub}</Text>
                 {active && (
                   <View style={[styles.checkDot, { backgroundColor: Colors.primary }]}>
                     <Text style={styles.checkText}>✓</Text>
@@ -145,7 +169,6 @@ export default function Paywall() {
           })}
         </View>
 
-        {/* Features */}
         <View style={[styles.featureBox, { backgroundColor: Colors.card }]}>
           {FEATURES.map((f, i) => (
             <View key={i} style={styles.featureRow}>
@@ -155,25 +178,16 @@ export default function Paywall() {
           ))}
         </View>
 
-        {/* CTA */}
         <TouchableOpacity
           style={[styles.cta, { backgroundColor: Colors.primary, opacity: buying ? 0.7 : 1 }]}
           onPress={handlePurchase}
           disabled={buying || loading}
           activeOpacity={0.85}
         >
-          {buying
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.ctaText}>
-                {selected === 'annual' ? 'Start Annual Plan' : 'Start Monthly Plan'}
-              </Text>
-          }
+          {buying ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>{ctaText}</Text>}
         </TouchableOpacity>
 
-        {/* Legal & restore */}
-        <Text style={[styles.legal, { color: Colors.textLight }]}>
-          Subscription renews automatically. Cancel anytime in your account settings.
-        </Text>
+        <Text style={[styles.legal, { color: Colors.textLight }]}>{legal}</Text>
 
         <TouchableOpacity onPress={handleRestore} disabled={buying} style={styles.restoreBtn}>
           <Text style={[styles.restoreText, { color: Colors.primary }]}>Restore Purchase</Text>
@@ -191,7 +205,7 @@ const styles = StyleSheet.create({
   scroll:       { padding: 24, paddingBottom: 40 },
   header:       { alignItems: 'center', marginBottom: 28 },
   crown:        { fontSize: 52, marginBottom: 12 },
-  title:        { fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
+  title:        { fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
   subtitle:     { fontSize: 15, textAlign: 'center', lineHeight: 22 },
   planRow:      { flexDirection: 'row', gap: 12, marginBottom: 24 },
   planCard:     { flex: 1, borderWidth: 2, borderRadius: 16, padding: 16, alignItems: 'center', position: 'relative' },
@@ -199,7 +213,7 @@ const styles = StyleSheet.create({
   badgeText:    { color: '#fff', fontSize: 11, fontWeight: '700' },
   planLabel:    { fontSize: 13, fontWeight: '600', marginBottom: 6 },
   planPrice:    { fontSize: 22, fontWeight: '800', marginBottom: 2 },
-  planPeriod:   { fontSize: 12 },
+  planPeriod:   { fontSize: 11, textAlign: 'center' },
   checkDot:     { position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   checkText:    { color: '#fff', fontSize: 11, fontWeight: '700' },
   featureBox:   { borderRadius: 16, padding: 20, marginBottom: 24 },

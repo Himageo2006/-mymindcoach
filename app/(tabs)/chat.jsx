@@ -15,6 +15,7 @@ import { getChatLanguage, getAppLanguage } from '../../src/services/language';
 import { extractAndSaveMemory } from '../../src/services/memory';
 import { tapLight, tapMedium, success, error as hapticError } from '../../src/services/haptics';
 import { getSelectedCoach } from '../../src/services/coachService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { needsCheckup, getLastCheckupResult } from '../../src/services/checkup';
 import MentalCheckup from '../mental-checkup';
 
@@ -236,6 +237,8 @@ export default function Chat() {
   const [isOnline] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [coach, setCoach] = useState({ name: 'Sarah', avatar: '🧘‍♀️', gender: 'female', specialty: 'Certified Wellness Coach' });
+  const [concern, setConcern] = useState('');   // user's stated topic (for a personalized paywall)
+  const sessionReplies = useRef(0);              // assistant replies this session (aha-moment trigger)
   const [initializing, setInitializing] = useState(true);
   const [showCheckup, setShowCheckup] = useState(false);
   const [consentVisible, setConsentVisible] = useState(false);
@@ -288,6 +291,7 @@ export default function Chat() {
       setUserName(name);
       setRemaining(rem);
       setExtra(ex || 0);
+      if (checkup && checkup.topic) setConcern(String(checkup.topic));
       setMessages([{
         id: '0',
         role: 'assistant',
@@ -312,6 +316,25 @@ export default function Chat() {
     setConsentVisible(false);
     const t = pendingTextRef.current; pendingTextRef.current = '';
     if (t) handleSend(t);
+  }
+
+  // Open the paywall, personalized with the user's stated concern when we have it.
+  const goPaywall = useCallback(() => {
+    const q = concern ? `?goal=${encodeURIComponent(concern.toLowerCase())}` : '';
+    router.push(`/paywall${q}`);
+  }, [concern]);
+
+  // Aha-moment: after a free user has had a real exchange, show the paywall ONCE.
+  // Gentle: only after several replies, never repeated, and the paywall has "Maybe later".
+  async function maybeAhaPaywall() {
+    if (isPro) return;
+    sessionReplies.current += 1;
+    if (sessionReplies.current < 6) return;
+    try {
+      if (await AsyncStorage.getItem('aha_paywall_shown')) return;
+      await AsyncStorage.setItem('aha_paywall_shown', '1');
+      goPaywall();
+    } catch {}
   }
 
   async function handleBuyPack() {
@@ -351,7 +374,7 @@ export default function Chat() {
       if (isPro) {
         setError("You've reached today's limit — it resets tomorrow.");
       } else {
-        router.push('/paywall');
+        goPaywall();
       }
       return;
     }
@@ -378,6 +401,7 @@ export default function Chat() {
       setExtra(newExtra || 0);
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: canned, time: new Date() }]);
       success();
+      maybeAhaPaywall();
       setLoading(false);
       return;
     }
@@ -392,6 +416,7 @@ export default function Chat() {
       setExtra(newExtra || 0);
       setMessages((prev) => [...prev, { id: Date.now().toString(), role: 'assistant', content: reply, time: new Date() }]);
       success();
+      maybeAhaPaywall();
     } catch (err) {
       if (err?.code === 'limit_reached') {
         // Server-side quota exhausted — remove the un-sent message and surface the limit
@@ -400,7 +425,7 @@ export default function Chat() {
         setRemaining(r);
         setExtra(ex || 0);
         if (!isPro) {
-          router.push('/paywall');
+          goPaywall();
         } else {
           setError(i18n.language === 'ar' ? 'وصلت للحد اليومي — يتجدد بكرة.' : "You've reached today's limit — it resets tomorrow.");
         }
@@ -583,7 +608,7 @@ export default function Chat() {
                     </Text>
                   </TouchableOpacity>
                   {!isPro && (
-                    <TouchableOpacity onPress={() => router.push('/paywall')}>
+                    <TouchableOpacity onPress={() => goPaywall()}>
                       <Text style={styles.upgradeLink}>{ar ? 'اشترك' : 'Upgrade'}</Text>
                     </TouchableOpacity>
                   )}
@@ -613,7 +638,7 @@ export default function Chat() {
             style={[styles.micBtn, isRecording && styles.micBtnActive, !voiceEnabled && styles.micBtnLocked]}
             onPress={voiceEnabled
               ? (isRecording ? stopRecording : startRecording)
-              : () => router.push('/paywall')}
+              : () => goPaywall()}
             disabled={transcribing}
           >
             <Text style={styles.micIcon}>{!voiceEnabled ? '🔒' : isRecording ? '⏹' : '🎤'}</Text>
