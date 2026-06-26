@@ -177,6 +177,8 @@ function AppStack({ onboarded }) {
         <Stack.Screen name="privacy" />
         <Stack.Screen name="crisis" />
         <Stack.Screen name="breathing" />
+        <Stack.Screen name="programs" />
+        <Stack.Screen name="program" />
       </Stack>
     </>
   );

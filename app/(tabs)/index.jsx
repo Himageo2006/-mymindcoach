@@ -233,6 +233,13 @@ export default function Home() {
               <Text style={styles.actionLabel}>{t.breatheLabel}</Text>
               <Text style={styles.actionDesc}>{t.breatheDesc}</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionCard, { backgroundColor: Colors.primary + '20' }]} onPress={() => router.push('/programs')}>
+              <View style={[styles.actionIcon, { backgroundColor: Colors.primary }]}>
+                <Text style={styles.actionEmoji}>🧭</Text>
+              </View>
+              <Text style={styles.actionLabel}>{t.journeysLabel || 'Journeys'}</Text>
+              <Text style={styles.actionDesc}>{t.journeysDesc || 'Guided programs'}</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Recent Moods */}

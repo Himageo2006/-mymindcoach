@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '../../src/context/ThemeContext';
 import { sendMessage } from '../../src/services/claude';
@@ -245,6 +245,15 @@ export default function Chat() {
   const pendingTextRef = useRef('');
   const listRef = useRef(null);
   const isMounted = useRef(true);
+  // Guided-journey seed: prefill the day's opening message when opened from a program
+  const { seed } = useLocalSearchParams();
+  const appliedSeed = useRef(null);
+  useEffect(() => {
+    if (seed && appliedSeed.current !== seed) {
+      appliedSeed.current = seed;
+      setInput(String(seed));
+    }
+  }, [seed]);
 
   // Reload coach whenever the screen comes into focus (e.g. after coach-select)
   useFocusEffect(useCallback(() => {
