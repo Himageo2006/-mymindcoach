@@ -110,25 +110,26 @@ function AIConsentModal({ visible, onAccept }) {
           <ScrollView style={consent.scroll} showsVerticalScrollIndicator={false}>
             <Text style={consent.body}>
               MyMindCoach uses AI to provide personalized mental wellness support. To do this, the messages and journal entries you share with your coach are sent to{' '}
-              <Text style={consent.bold}>Anthropic's Claude AI</Text>
-              {' '}for processing.
+              <Text style={consent.bold}>third-party AI providers</Text>
+              {' '}to generate responses.
             </Text>
             <Text style={consent.sectionTitle}>What data is shared:</Text>
             <Text style={consent.bullet}>• Your chat messages with AI coaches</Text>
             <Text style={consent.bullet}>• Journal entries you submit for analysis</Text>
             <Text style={consent.bullet}>• Mood check-in responses</Text>
             <Text style={consent.sectionTitle}>Who receives your data:</Text>
-            <Text style={consent.bullet}>• <Text style={consent.bold}>Anthropic, Inc.</Text> — AI processing only</Text>
+            <Text style={consent.bullet}>• <Text style={consent.bold}>Third-party AI language-model providers</Text> — to generate responses only</Text>
+            <Text style={consent.bullet}>• Your conversations are not stored on our servers or used to train any model</Text>
             <Text style={consent.bullet}>• Data is not sold or used for advertising</Text>
             <Text style={consent.body}>
-              Anthropic processes data under their{' '}
+              These providers process data under their own privacy policies. You can review our full{' '}
               <Text
                 style={consent.link}
-                onPress={() => Linking.openURL('https://www.anthropic.com/privacy')}
+                onPress={() => router.push('/privacy')}
               >
                 Privacy Policy
               </Text>
-              . You can review our full privacy policy at any time in Settings.
+              {' '}at any time in Settings.
             </Text>
           </ScrollView>
           <TouchableOpacity style={consent.acceptBtn} onPress={onAccept}>
