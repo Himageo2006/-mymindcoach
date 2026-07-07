@@ -9,7 +9,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '../../src/context/ThemeContext';
 import { sendMessage } from '../../src/services/claude';
-import { getUserProfile, getAIConsent, setAIConsent } from '../../src/services/storage';
+import { getUserProfile, getAIConsent, setAIConsent, ensureAIConsent } from '../../src/services/storage';
 import { canSendMessage, incrementMessageCount, FREE_LIMITS, getPlanConfig, buyMessagePack, getMessagePackProduct, reconcilePacks } from '../../src/services/subscription';
 import { getChatLanguage, getAppLanguage } from '../../src/services/language';
 import { extractAndSaveMemory } from '../../src/services/memory';
@@ -465,9 +465,11 @@ export default function Chat() {
 
   async function stopRecording() {
     if (!audioRecorder.isRecording) return;
+    try { await audioRecorder.stop(); } catch (_) {}
+    // Apple 5.1.1/5.1.2 — voice is sent to the AI for transcription; require consent first
+    if (!(await ensureAIConsent())) return;
     setTranscribing(true);
     try {
-      await audioRecorder.stop();
       const uri = audioRecorder.uri;
       const chatLanguage = await getChatLanguage();
       const formData = new FormData();

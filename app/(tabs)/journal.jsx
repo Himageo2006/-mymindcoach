@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '../../src/context/ThemeContext';
-import { saveJournalEntry, getJournalEntries } from '../../src/services/storage';
+import { saveJournalEntry, getJournalEntries, ensureAIConsent } from '../../src/services/storage';
 import { tapLight, tapMedium, success } from '../../src/services/haptics';
 
 const SERVER_URL = 'https://mindtalk-server-production.up.railway.app';
@@ -61,6 +61,8 @@ export default function Journal() {
 
   async function handleAnalyze(entryText) {
     tapLight();
+    // Apple 5.1.1/5.1.2 — journal text is sent to the AI; require consent first
+    if (!(await ensureAIConsent())) return;
     setAnalysisEntry(entryText);
     setAnalysis(null);
     setAnalyzing(true);

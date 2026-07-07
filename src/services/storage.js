@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 // ── AI data-use consent (Apple 5.1.1/5.1.2): user must agree before any AI call ──
 export async function getAIConsent() {
@@ -6,6 +7,24 @@ export async function getAIConsent() {
 }
 export async function setAIConsent() {
   await AsyncStorage.setItem('ai_consent_v1', 'yes');
+}
+// Reusable gate for ANY feature that sends user content to the AI (chat, journal,
+// voice). Resolves true only after the user has consented. Apple 5.1.1/5.1.2.
+export function ensureAIConsent() {
+  return new Promise((resolve) => {
+    getAIConsent().then((ok) => {
+      if (ok) return resolve(true);
+      Alert.alert(
+        'AI & Your Privacy',
+        'To do this, MindTalk sends the content you provide (your text, and voice recordings if you use them) to our AI provider, Anthropic (Claude AI), so it can generate a response. Only that content is sent — not your name or contacts. Do you agree to share it with Anthropic for this purpose?',
+        [
+          { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'I Agree', onPress: async () => { await setAIConsent(); resolve(true); } },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) }
+      );
+    });
+  });
 }
 
 export async function saveUserProfile(name, goal, age = null, nationality = null, userGender = null) {
