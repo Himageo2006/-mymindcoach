@@ -16,7 +16,7 @@ export function ensureAIConsent() {
       if (ok) return resolve(true);
       Alert.alert(
         'AI & Your Privacy',
-        'To do this, MindTalk sends the content you provide (your text, and voice recordings if you use them) to our AI provider, Anthropic (Claude AI), so it can generate a response. Only that content is sent — not your name or contacts. Do you agree to share it with Anthropic for this purpose?',
+        'To do this, MindTalk sends the content you provide (your text, and voice recordings if you use them) to third-party AI providers — Google (Gemini), Groq, Cloudflare, and OpenRouter — so they can generate a response. Only that content is sent — not your contacts or stored data. Do you agree to share it with these providers for this purpose?',
         [
           { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
           { text: 'I Agree', onPress: async () => { await setAIConsent(); resolve(true); } },

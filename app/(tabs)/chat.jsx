@@ -687,10 +687,10 @@ export default function Chat() {
             <ScrollView style={{ maxHeight: 280 }}>
               <Text style={[styles.consentBody, { color: Colors.text }]}>
                 {t('consent.body',
-`To reply to you, MindTalk sends the messages you type to our AI provider (Anthropic Claude) for processing, so it can generate a response.
+`To reply to you, MindTalk sends the messages you type to third-party AI providers for processing, so they can generate a response.
 
 • What is sent: the text of your chat messages (and your first name if you set one).
-• Who it is sent to: Anthropic (Claude AI), our processing provider.
+• Who it is sent to: Google (Gemini), Groq, Cloudflare, and OpenRouter — the AI providers that generate replies.
 • What it is used for: only to generate replies in this conversation.
 
 MindTalk is a wellness companion, not a medical or emergency service. By continuing you agree to this AI processing as described in our Privacy Policy.`)}

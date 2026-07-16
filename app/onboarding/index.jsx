@@ -268,7 +268,7 @@ export default function Onboarding() {
 
               {/* AI disclosure + privacy consent */}
               <Text style={s.privacyNote}>
-                {'By continuing, you agree that your messages will be processed by Anthropic\'s Claude AI to generate responses. '}
+                {'By continuing, you agree that your messages will be processed by third-party AI providers (Google, Groq, Cloudflare, and OpenRouter) to generate responses. '}
                 <Text style={s.privacyLink} onPress={() => router.push('/privacy')}>Privacy Policy</Text>
               </Text>
             </View>

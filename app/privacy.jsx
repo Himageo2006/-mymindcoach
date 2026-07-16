@@ -6,31 +6,31 @@ import { useColors } from '../src/context/ThemeContext';
 const SECTIONS = [
   {
     title: '1. Information We Collect',
-    body: 'MyMindCoach collects only the information you provide directly: your first name and wellness goal during onboarding. Your conversation messages are sent to our secure server to generate AI responses and are not stored after the response is delivered. Your journal entries, mood check-ins, and profile are stored only on your device.',
+    body: 'MindTalk collects only the information you provide directly: your first name and wellness goal during onboarding. When you chat with your coach, submit a journal entry for analysis, or use voice input, that content is sent to our secure server and on to third-party AI providers to generate a response; it is not stored after the response is delivered. Your journal entries, mood check-ins, and profile are stored only on your device.',
   },
   {
     title: '2. How We Use Your Information',
-    body: 'Your name and goal are used to personalize your experience. When you send a message to your coach, it is transmitted to our secure backend server, which forwards it to Anthropic\'s Claude AI API to generate a response. The message is not stored after the response is delivered. We do not use your conversations for advertising or sell your data to third parties.',
+    body: 'Your name and goal are used to personalize your experience. When you send a message, journal entry, or voice recording to your coach, it is transmitted to our secure backend server, which forwards it to third-party AI providers — Google (Gemini), Groq, Cloudflare, and OpenRouter — to generate a response. Only that content (and your first name, if set) is sent — never your contacts, mood history, or stored journal. It is not stored after the response is delivered. We do not use your conversations for advertising or sell your data to third parties.',
   },
   {
     title: '3. Data Storage',
     body: 'All personal data — including journal entries, mood history, and your profile — is stored locally on your device using encrypted storage. Conversation messages are processed in transit and not stored on our servers after a response is delivered.',
   },
   {
-    title: '4. Third-Party AI Service — Anthropic',
-    body: 'MyMindCoach uses Claude, an AI model developed by Anthropic, PBC (anthropic.com), to generate your coach\'s responses. When you send a message, it is transmitted securely to Anthropic\'s API for processing. Anthropic does not store your messages after generating a response. Anthropic\'s privacy policy is available at anthropic.com/privacy. We also use RevenueCat to manage in-app subscriptions securely.',
+    title: '4. Third-Party AI Providers',
+    body: 'To generate your coach\'s responses, MindTalk shares the content you send with third-party AI language-model providers: Google (Gemini), Groq, Cloudflare, and OpenRouter. Your message text (and voice recording, if used) is transmitted securely to whichever provider generates the response. These providers do not store your messages after generating a reply and do not use them to train their models. Each processes data under its own privacy policy — Google (policies.google.com/privacy), Groq (groq.com/privacy-policy), Cloudflare (cloudflare.com/privacypolicy), and OpenRouter (openrouter.ai/privacy) — and we only use providers that offer data protection equivalent to that described in this policy. We also use RevenueCat to manage in-app subscriptions securely.',
   },
   {
     title: '5. Subscriptions & Payments',
-    body: 'Payment processing is handled entirely by Apple App Store or Google Play. MyMindCoach never sees or stores your payment information. Subscriptions can be cancelled at any time through your device\'s account settings.',
+    body: 'Payment processing is handled entirely by Apple App Store or Google Play. MindTalk never sees or stores your payment information. Subscriptions can be cancelled at any time through your device\'s account settings.',
   },
   {
     title: '6. Children\'s Privacy',
-    body: 'MyMindCoach is not intended for users under the age of 13. We do not knowingly collect information from children under 13. If you believe a child has provided us with personal information, please contact us.',
+    body: 'MindTalk is not intended for users under the age of 13. We do not knowingly collect information from children under 13. If you believe a child has provided us with personal information, please contact us.',
   },
   {
     title: '7. Mental Health Disclaimer',
-    body: 'MyMindCoach is a personal wellness companion and is not a substitute for professional mental health care. It does not provide medical advice, diagnosis, or treatment. If you are experiencing a mental health crisis, please contact a qualified professional or crisis helpline immediately.',
+    body: 'MindTalk is a personal wellness companion and is not a substitute for professional mental health care. It does not provide medical advice, diagnosis, or treatment. If you are experiencing a mental health crisis, please contact a qualified professional or crisis helpline immediately.',
   },
   {
     title: '8. Changes to This Policy',
@@ -55,10 +55,10 @@ export default function Privacy() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.appName}>MyMindCoach</Text>
+        <Text style={styles.appName}>MindTalk</Text>
         <Text style={styles.updated}>Last updated: June 2026</Text>
         <Text style={styles.intro}>
-          Your privacy matters to us. This policy explains what information MyMindCoach collects, how we use it, and how we protect it.
+          Your privacy matters to us. This policy explains what information MindTalk collects, how we use it, and how we protect it.
         </Text>
 
         {SECTIONS.map((s, i) => (
@@ -68,7 +68,7 @@ export default function Privacy() {
           </View>
         ))}
 
-        <Text style={styles.footer}>© 2026 MyMindCoach. All rights reserved.</Text>
+        <Text style={styles.footer}>© 2026 MindTalk. All rights reserved.</Text>
       </ScrollView>
     </SafeAreaView>
   );

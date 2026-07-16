@@ -13,8 +13,8 @@
       "buildNumber": "24",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "MyMindCoach uses your microphone so you can send voice messages to your coach.",
-        "NSSpeechRecognitionUsageDescription": "MyMindCoach transcribes your voice messages to text.",
+        "NSMicrophoneUsageDescription": "MindTalk uses your microphone so you can send voice messages to your coach.",
+        "NSSpeechRecognitionUsageDescription": "MindTalk transcribes your voice messages to text.",
         "UIBackgroundModes": []
       }
     },

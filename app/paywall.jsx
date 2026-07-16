@@ -43,10 +43,14 @@ export default function Paywall() {
   const [buying, setBuying] = useState(false);
 
   useEffect(() => {
-    getOfferings().then((o) => {
-      setOfferings(o);
-      setLoading(false);
-    });
+    let done = false;
+    const finish = (o) => { done = true; setOfferings(o ?? null); setLoading(false); };
+    getOfferings().then(finish).catch(() => finish(null));
+    // Never let the CTA stay disabled if the store call hangs — after 8s we stop
+    // "loading" so a tap always gets a response (the "store not available" alert)
+    // rather than a dead button. (Apple 2.1(b))
+    const t = setTimeout(() => { if (!done) setLoading(false); }, 8000);
+    return () => clearTimeout(t);
   }, []);
 
   const pkgFor = useCallback((planId) => {
@@ -61,9 +65,21 @@ export default function Paywall() {
   const handlePurchase = async () => {
     setBuying(true);
     try {
-      const pkg = getPackage();
+      let pkg = getPackage();
+      // If the offering wasn't loaded yet (or came back empty), try once more before
+      // giving up — avoids a dead-feeling tap if the first fetch missed. (Apple 2.1(b))
       if (!pkg) {
-        Alert.alert('Store not available', 'Please try again later or contact support.');
+        const fresh = await getOfferings();
+        if (fresh) setOfferings(fresh);
+        pkg = fresh
+          ? (selected === 'annual' ? fresh.annual || fresh.twoMonth : fresh.monthly) || null
+          : null;
+      }
+      if (!pkg) {
+        Alert.alert(
+          'Store not available',
+          'We couldn’t reach the App Store to load this plan. Please check your connection and try again in a moment.',
+        );
         return;
       }
       await purchasePremium(pkg);

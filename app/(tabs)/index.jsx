@@ -89,7 +89,7 @@ export default function Home() {
     tapLight();
     try {
       await Share.share({
-        message: `"${quote}"\n\n— Daily wellness reminder from MyMindCoach 🧠\nTake care of your mental health every day.`,
+        message: `"${quote}"\n\n— Daily wellness reminder from MindTalk 🧠\nTake care of your mental health every day.`,
       });
     } catch (e) {}
   }

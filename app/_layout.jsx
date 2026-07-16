@@ -71,7 +71,7 @@ function SplashScreen() {
         </Animated.View>
       </Animated.View>
       <Animated.View style={{ opacity: fadeAnim }}>
-        <Text style={splash.appName}>MyMindCoach</Text>
+        <Text style={splash.appName}>MindTalk</Text>
       </Animated.View>
       <Animated.View style={{ opacity: subtitleFade }}>
         <Text style={splash.tagline}>Your mental wellness companion</Text>
@@ -109,7 +109,7 @@ function AIConsentModal({ visible, onAccept }) {
           <Text style={consent.title}>Your Privacy Matters</Text>
           <ScrollView style={consent.scroll} showsVerticalScrollIndicator={false}>
             <Text style={consent.body}>
-              MyMindCoach uses AI to provide personalized mental wellness support. To do this, the messages and journal entries you share with your coach are sent to{' '}
+              MindTalk uses AI to provide personalized mental wellness support. To do this, the messages and journal entries you share with your coach are sent to{' '}
               <Text style={consent.bold}>third-party AI providers</Text>
               {' '}to generate responses.
             </Text>
@@ -118,7 +118,7 @@ function AIConsentModal({ visible, onAccept }) {
             <Text style={consent.bullet}>• Journal entries you submit for analysis</Text>
             <Text style={consent.bullet}>• Mood check-in responses</Text>
             <Text style={consent.sectionTitle}>Who receives your data:</Text>
-            <Text style={consent.bullet}>• <Text style={consent.bold}>Third-party AI language-model providers</Text> — to generate responses only</Text>
+            <Text style={consent.bullet}>• <Text style={consent.bold}>Google (Gemini), Groq, Cloudflare, and OpenRouter</Text> — third-party AI providers that generate responses only</Text>
             <Text style={consent.bullet}>• Your conversations are not stored on our servers or used to train any model</Text>
             <Text style={consent.bullet}>• Data is not sold or used for advertising</Text>
             <Text style={consent.body}>
